@@ -181,9 +181,9 @@ bool Graph::is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned su
 
 
 /**
- * generates a lexicographic ordering on the vertices of the graph via lexicographic-breadth-first-search
+ * generates a lexicographic labeling on the vertices of the graph via lexicographic-breadth-first-search
 **/
-std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
+std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_labeling() {
 	if (order == 0)
 		return {};
 
@@ -204,7 +204,7 @@ std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
 	partitions.push_back(initial_set);
 
 	std::list<std::vector<unsigned>>::iterator i;
-	unsigned * ordering = new unsigned[order];
+	unsigned * labeling = new unsigned[order];
 
 	for (unsigned j = 0; j < order; j++)
 	{
@@ -215,7 +215,7 @@ std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
 			partitions.erase(i);
 
 		visited[vertex - 1] = true;
-		ordering[j] = vertex;
+		labeling[j] = vertex;
 
 		bool * set = new bool[order];
 		for (unsigned neighbour = 1; neighbour <= order; neighbour++)
@@ -231,13 +231,13 @@ std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
 		delete[] set;
 	}
 
-	unsigned * ordering_indices = new unsigned[order];
+	unsigned * labeling_indices = new unsigned[order];
 
 	for (unsigned j = 0; j < order; j++)
-		ordering_indices[ordering[j] - 1] = j;
+		labeling_indices[labeling[j] - 1] = j;
 
 	delete[] visited;
-	return std::pair<unsigned *, unsigned *>(ordering, ordering_indices);
+	return std::pair<unsigned *, unsigned *>(labeling, labeling_indices);
 }
 
 
@@ -278,7 +278,7 @@ bool Graph::is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned su
  * tests if the graph is closed with regards to given (perfect elimination) ordering, i.e.
  * {a,b},{i,j} in E(G) with a < b, i < j  =>  {a,i} in E(G) if b=j and {b,j} in E(G) if a=i
 **/
-bool Graph::is_closed_wrt_ordering(unsigned * peo, unsigned * peo_indices) {
+bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
 	for (unsigned vertex = 1; vertex <= order; vertex++)
 	{
 		int nearest_prior_neighbour;
@@ -353,13 +353,13 @@ bool Graph::peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t
 		h[y - 1]++;
 	}
 
-	return is_closed_wrt_ordering(peo, peo_indices);
+	return is_closed_wrt_labeling(peo, peo_indices);
 }
 
 
 /**
 * a special swap where the order of the t-th pair of simplicial vertices is swapped
-* also tests if the graph is closed with regards to the new ordering
+* also tests if the graph is closed with regards to the new labeling
 **/
 bool Graph::peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, int t) {
 	if (t != -1)
@@ -384,7 +384,7 @@ bool Graph::peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, uns
 		}
 	}
 
-	return is_closed_wrt_ordering(peo, peo_indices);
+	return is_closed_wrt_labeling(peo, peo_indices);
 }
 
 
@@ -737,7 +737,7 @@ std::string Graph::convert_to_string() {
 
 
 
-std::string Graph::convert_to_string_wrt_ordering(unsigned * ordering_indices) {
+std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling_indices) {
 	std::string edges = "{";
 
 	for (unsigned first_vertex = 1; first_vertex <= order; first_vertex++)
@@ -747,9 +747,9 @@ std::string Graph::convert_to_string_wrt_ordering(unsigned * ordering_indices) {
 			if (adjacencies[get_index(first_vertex, second_vertex, order)])
 			{
 				edges.push_back('{');
-				edges += std::to_string(ordering_indices[first_vertex - 1] + 1);
+				edges += std::to_string(labeling_indices[first_vertex - 1] + 1);
 				edges.push_back(',');
-				edges += std::to_string(ordering_indices[second_vertex - 1] + 1);
+				edges += std::to_string(labeling_indices[second_vertex - 1] + 1);
 				edges.push_back('}');
 				edges.push_back(',');
 			}
@@ -1119,14 +1119,14 @@ bool Graph::is_chordal() {
 	if (order < 4)
 		return true;
 
-	std::pair<unsigned *, unsigned *> ordering = gen_lexicographic_ordering();
+	std::pair<unsigned *, unsigned *> labeling = gen_lexicographic_labeling();
 
 	for (unsigned vertex = 1; vertex <= order; vertex++)
 	{
 		int nearest_prior_neighbour;
-		for (nearest_prior_neighbour = (int)(ordering.second[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
+		for (nearest_prior_neighbour = (int)(labeling.second[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
 		{
-			if (adjacencies[get_index(vertex, ordering.first[nearest_prior_neighbour], order)])
+			if (adjacencies[get_index(vertex, labeling.first[nearest_prior_neighbour], order)])
 				break;
 		}
 
@@ -1134,19 +1134,19 @@ bool Graph::is_chordal() {
 		{
 			for (int prior_neighbour = 0; prior_neighbour < nearest_prior_neighbour; prior_neighbour++)
 			{
-				if (adjacencies[get_index(vertex, ordering.first[prior_neighbour], order)]
-					&& !adjacencies[get_index(ordering.first[nearest_prior_neighbour], ordering.first[prior_neighbour], order)])
+				if (adjacencies[get_index(vertex, labeling.first[prior_neighbour], order)]
+					&& !adjacencies[get_index(labeling.first[nearest_prior_neighbour], labeling.first[prior_neighbour], order)])
 				{
-					delete[] ordering.first;
-					delete[] ordering.second;
+					delete[] labeling.first;
+					delete[] labeling.second;
 					return false;
 				}
 			}
 		}
 	}
 
-	delete[] ordering.first;
-	delete[] ordering.second;
+	delete[] labeling.first;
+	delete[] labeling.second;
 	return true;
 }
 
@@ -1172,7 +1172,7 @@ bool Graph::is_clawfree() {
 
 /**
  * expects the graph to be chordal
- * tests if the graph is closed, i.e. there exists an ordering with respect to which the graph is closed
+ * tests if the graph is closed, i.e. there exists an labeling with respect to which the graph is closed
 **/
 bool Graph::is_closed() {
 	if (order < 3)
@@ -1186,7 +1186,7 @@ bool Graph::is_closed() {
 	unsigned * b = new unsigned[order / 2];
 
 	gen_initial_peo(peo, peo_indices, h, a, b);
-	closed = is_closed_wrt_ordering(peo, peo_indices);
+	closed = is_closed_wrt_labeling(peo, peo_indices);
 
 	if (!closed)
 		closed = test_pe_orderings(peo, peo_indices, h, a, b, order / 2);
@@ -1208,47 +1208,10 @@ bool Graph::is_closed() {
 
 
 /**
- * tests if this graph is a cone over another graph, i.e. the same graph with an additional universal vertex
- * returns the base graph of the cone or an empty graph if this graph is not a cone
-**/
-Graph Graph::get_base_of_cone() {
-	if (order < 2)
-		return Graph();
-
-	unsigned apex;
-
-	for (apex = order; apex > 0; apex--)
-		if (is_universal(apex))
-			break;
-
-	if (apex == 0)
-		return Graph();
-	
-
-	unsigned * adj = new unsigned[(order - 1) * (order - 1)];
-	for (unsigned v_old = 1, v_new = 1; v_new < order; v_old++, v_new++)
-	{
-		if (v_old == apex)
-			v_old++;
-
-		for (unsigned w_old = 1, w_new = 1; w_new < order; w_old++, w_new++)
-		{
-			if (w_old == apex)
-				w_old++;
-
-			adj[get_index(v_new, w_new, order - 1)] = adjacencies[get_index(v_old, w_old, order)];
-		}
-	}
-
-	return Graph(order - 1, adj);
-}
-
-
-/**
  * expects the graph to be closed
- * returns an ordering with regards to which the graph is closed
+ * returns an labeling with regards to which the graph is closed
 **/
-std::pair<unsigned *, unsigned *> Graph::gen_closed_ordering() {
+std::pair<unsigned *, unsigned *> Graph::gen_closed_labeling_pair() {
 	if (order < 1)
 		return std::pair<unsigned *, unsigned *>(0, 0);
 
@@ -1279,7 +1242,7 @@ std::pair<unsigned *, unsigned *> Graph::gen_closed_ordering() {
 	unsigned * b = new unsigned[order / 2];
 
 	gen_initial_peo(peo, peo_indices, h, a, b);
-	closed = is_closed_wrt_ordering(peo, peo_indices);
+	closed = is_closed_wrt_labeling(peo, peo_indices);
 
 	if (!closed)
 		closed = test_pe_orderings(peo, peo_indices, h, a, b, order / 2);
@@ -1295,4 +1258,11 @@ std::pair<unsigned *, unsigned *> Graph::gen_closed_ordering() {
 	delete[] b;
 
 	return std::pair<unsigned *, unsigned *>(peo, peo_indices);
+}
+
+
+unsigned * Graph::gen_closed_labeling() {
+	std::pair<unsigned *, unsigned *> labeling_pair = gen_closed_labeling_pair();
+	delete[] labeling_pair.first;
+	return labeling_pair.second;
 }

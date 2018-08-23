@@ -3,7 +3,7 @@
 #include "stdafx.h"
 
 
-enum class FORMAT {NONE, G6, LIST, ADJ};
+enum class FORMAT { NONE, G6, LIST, ADJ };
 
 
 class Graph
@@ -18,13 +18,16 @@ private:
 	std::vector<unsigned> gen_order_4_subsets();
 	bool is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned subset_nr);
 
-	std::pair<unsigned *, unsigned *> gen_lexicographic_ordering();
+	std::pair<unsigned *, unsigned *> gen_lexicographic_labeling();
 
 	bool is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned subset_nr);
 
-	bool is_closed_wrt_ordering(unsigned * peo, unsigned * peo_indices);
+	bool is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices);
+
 	bool is_simplicial(unsigned vertex, bool * visited);
+
 	std::pair<unsigned, unsigned> get_simplicial_pair(bool * visited);
+
 	bool peo_swappable(unsigned * peo, unsigned * h, int t);
 	bool peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t);
 	bool peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, int t);
@@ -72,16 +75,21 @@ public:
 
 
 	unsigned get_order();
+
 	std::string convert_to_string();
-	std::string convert_to_string_wrt_ordering(unsigned * ordering_indices);
+	std::string convert_to_string_wrt_labeling(unsigned * ordering_indices);
 	std::string convert_to_g6_format();
+
 	bool adjacent(unsigned v, unsigned w);
+
 	unsigned get_size();
+
 	bool read_next_adjacency_format(std::ifstream * file);
 	bool read_next_g6_format(std::ifstream * file);
 	bool read_next_list_format(std::ifstream * file);
 
 	std::pair<unsigned, unsigned> get_clique_numbers();
+
 	bool is_connected();
 	bool is_cograph();
 	bool is_euler();
@@ -89,7 +97,7 @@ public:
 	bool is_clawfree();
 	bool is_closed();
 
-	Graph get_base_of_cone();
-	std::pair<unsigned *, unsigned *> gen_closed_ordering();
+	std::pair<unsigned *, unsigned *> gen_closed_labeling_pair();
+	unsigned * gen_closed_labeling();
 };
 

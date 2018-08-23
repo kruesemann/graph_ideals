@@ -14,6 +14,7 @@ public:
 
 	bool read_next_table(std::ifstream* file);
 	void read_from_line(std::string * line);
+
 	std::string convert_to_line();
 
 	unsigned get_projective_dimension();

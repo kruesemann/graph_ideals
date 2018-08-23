@@ -45,26 +45,34 @@ public:
 	}
 
 	void reset_view();
+
 	void show_view(int limit = 100);
 	void save_view(std::ofstream * file);
+
 	void show_view_rich(int limit = 25);
 	void save_view_rich(std::ofstream * file);
+
 	void save_view_visualisation(std::ofstream * file);
 	void save_view_g6(std::ofstream * file);
-	void generate_m2_scripts(std::string * ideal_type, unsigned batch_size, std::vector<std::string> * required_packages);
-	void generate_closed_labeling_m2_scripts(std::string * ideal_type, unsigned batch_size, std::vector<std::string> * required_packages);
-	void generate_cone_lists();
-	void compare_cone_regularities(std::string * filename);
+
+	void generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name);
+
 	void show_status();
+	void show_scripts();
 
 	bool execute_SQL_query(std::string * query);
 	bool execute_SQL_statement(std::string * statement);
+
 	bool create_status_table();
+	bool create_scripts_table();
 	bool create_graphs_table();
+
 	void insert_graphs(std::ifstream * file, FORMAT format);
+
 	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
-	bool add_betti_data(std::string * idealname, const char * query_condition);
-	bool add_closed_labeling_betti_data(unsigned order, std::string * name, std::string * ideal_type);
+
+	bool add_betti_data(unsigned scriptID);
+
 	bool checked(const char * name, unsigned order);
 	void update_status(const char * specification, unsigned order);
 };

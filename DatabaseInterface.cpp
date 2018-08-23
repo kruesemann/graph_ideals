@@ -387,386 +387,130 @@ void DatabaseInterface::save_view_g6(std::ofstream * file) {
 
 
 /**
- * generates Macaulay2 scripts to compute the Betti tables for the factor ring of the specified ideal type of all graphs
+* generates Macaulay2 scripts to compute the Betti tables for the factor ring of the initial ideal of the specified ideal type of all graphs satisfying query_condition, each labeled wrt to the given labeling
 **/
-void DatabaseInterface::generate_m2_scripts(std::string * ideal_type, unsigned batch_size, std::vector<std::string> * required_packages) {
+void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name) {
 	sqlite3_stmt * qry;
 
-	if (sqlite3_prepare_v2(database, "SELECT edges FROM Graphs WHERE graphOrder == ?", -1, &qry, 0) != SQLITE_OK)
+	if (query_condition)
 	{
-		std::cout << "Generating M2 scripts failed. SQL error: invalid query." << std::endl;
+		if (sqlite3_prepare_v2(database, ("SELECT graphOrder,edges FROM Graphs WHERE " + std::string(query_condition)).c_str(), -1, &qry, 0) != SQLITE_OK)
+		{
+			std::cout << "Generating M2 scripts failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
+			sqlite3_finalize(qry);
+			return;
+		}
+	}
+	else
+	{
+		if (sqlite3_prepare_v2(database, "SELECT graphOrder,edges FROM Graphs", -1, &qry, 0) != SQLITE_OK)
+		{
+			std::cout << "Generating M2 scripts failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
+			sqlite3_finalize(qry);
+			return;
+		}
+	}
+
+	std::ifstream templ(filename ? filename : "template.m2");
+
+	if (!templ.is_open())
+	{
+		std::cout << "Generating M2 scripts failed. Unable to open '" << (filename ? filename : "template.m2") << "'." << std::endl;
 		sqlite3_finalize(qry);
 		return;
 	}
 
-	for (unsigned n = 1; true; n++)
+	std::stringstream buffer;
+	buffer << templ.rdbuf();
+	templ.close();
+
+	unsigned k;
+	unsigned i;
+
+	for (k = 0; true; k++)
 	{
-		sqlite3_bind_int(qry, 1, n);
+		std::string script = "G = {\n";
+		std::string edges;
+		std::string empty_edge_indices = "";
 
-		std::string vertices = "";
-		for (unsigned v = 1; v <= n; v++)
-			vertices += std::to_string(v) + ",";
-		vertices.pop_back();
-
-		unsigned k;
-		unsigned i;
-
-		for (k = 0; true; k++)
+		for (i = 0; i < batch_size && sqlite3_step(qry) == SQLITE_ROW; i++)
 		{
-			std::string script = "G = {\n";
-			std::string edges;
-			int empty_index = -1;
+			edges = (char *)sqlite3_column_text(qry, 1) ? (char *)sqlite3_column_text(qry, 1) : "ERROR";
+			Graph g(sqlite3_column_int(qry, 0), &edges);
 
-			for (i = 0; i < batch_size && sqlite3_step(qry) == SQLITE_ROW; i++)
+			if (gen_labeling)
 			{
-				edges = (char *)sqlite3_column_text(qry, 0) ? (char *)sqlite3_column_text(qry, 0) : "ERROR";
-				script += edges + ",\n";
-				if (edges == "{}")
-					empty_index = i;
+				unsigned * labeling = (g.*gen_labeling)();
+				script += g.convert_to_string_wrt_labeling(labeling) + ",\n";
+				delete[] labeling;
 			}
+			else
+				script += g.convert_to_string() + ",\n";
 
-			if (i != 0)
-			{
-				script.pop_back();
-				script.pop_back();
-
-				script += "\n}\n\nneedsPackage(\"Graphs\")\n";
-
-				for (unsigned j = 0; j < required_packages->size(); j++)
-					script += "needsPackage(\"" + required_packages->at(j) + "\")\n";
-
-				std::ofstream iFile;
-				size_t cut_index = ideal_type->find_first_of(' ');
-
-				if (cut_index < ideal_type->length() - 1)
-				{
-					std::string temp1 = ideal_type->substr(0, cut_index);
-					std::string temp2 = ideal_type->substr(cut_index + 1, std::string::npos);
-
-					iFile.open(std::to_string(n) + "-graphs_" + temp1 + "_" + temp2 + "_" + std::to_string(k) + ".m2", std::ios::trunc);
-
-					if (!iFile.is_open())
-					{
-						std::cout << "Generating M2 scripts failed. Could not write to file." << std::endl;
-						sqlite3_finalize(qry);
-						return;
-					}
-
-					if (empty_index != -1)
-						script += "\nfor i from 0 to " + std::to_string(empty_index - 1) + " do B_i=betti res " + *ideal_type + "(graph({" + vertices + "},G_i))\n" \
-						"B_" + std::to_string(empty_index) + "=betti res " + temp2 + "(graph({" + vertices + "},G_" + std::to_string(empty_index) + "))\n" \
-						"for i from " + std::to_string(empty_index + 1) + " to " + std::to_string(i - 1) + " do B_i=betti res " + *ideal_type + "(graph({" + vertices + "},G_i))\n\n" \
-						"F:=openOut(\"" + std::to_string(n) + "-betti_" + temp1 + "_" + temp2 + "_" + std::to_string(k) + ".bt\")\n";
-					else
-						script += "\nfor i from 0 to " + std::to_string(i - 1) + " do B_i=betti res " + *ideal_type + "(graph({" + vertices + "},G_i))\n\n" \
-						"F:=openOut(\"" + std::to_string(n) + "-betti_" + temp1 + "_" + temp2 + "_" + std::to_string(k) + ".bt\")\n";
-				}
-				else
-				{
-					iFile.open(std::to_string(n) + "-graphs_" + *ideal_type + "_" + std::to_string(k) + ".m2", std::ios::trunc);
-
-					if (!iFile.is_open())
-					{
-						std::cout << "Generating M2 scripts failed. Could not write to file." << std::endl;
-						sqlite3_finalize(qry);
-						return;
-					}
-
-					script += "\nfor i from 0 to " + std::to_string(i - 1) + " do B_i=betti res " + *ideal_type + "(graph({" + vertices + "},G_i))\n\n" \
-						"F:=openOut(\"" + std::to_string(n) + "-betti_" + *ideal_type + "_" + std::to_string(k) + ".bt\")\n";
-				}
-
-				script += "for i from 0 to " + std::to_string(i - 1) + " do F << B_i << endl << endl\nclose F";
-
-				iFile << script;
-
-				iFile.close();
-
-				std::cout << "   generated " << n << "-graphs_" << *ideal_type << "_" << k << ".m2\n";
-			}
-
-			if (i < batch_size)
-				break;
+			if (edges == "{}")
+				empty_edge_indices += std::to_string(i) + ",";
 		}
 
-		sqlite3_clear_bindings(qry);
-		sqlite3_reset(qry);
+		
+		script.pop_back();
+		script.pop_back();
+		script += "\n}\n\n" + buffer.str();
 
-		if (k == 0
-			&& i == 0)
-			break;
-	}
+		std::ofstream kFile(*idealname + "_" + std::to_string(k) + ".m2", std::ios::trunc);
 
-	sqlite3_finalize(qry);
-}
-
-
-/**
-* generates Macaulay2 scripts to compute the Betti tables for the factor ring of the initial ideal of the specified ideal type of all closed graphs each labeled wrt to one of their closed orderings
-**/
-void DatabaseInterface::generate_closed_labeling_m2_scripts(std::string * ideal_type, unsigned batch_size, std::vector<std::string> * required_packages) {
-	sqlite3_stmt * qry;
-
-	if (sqlite3_prepare_v2(database, "SELECT edges FROM Graphs WHERE graphOrder == ? AND type LIKE '%closed%'", -1, &qry, 0) != SQLITE_OK)
-	{
-		std::cout << "Generating M2 scripts failed. SQL error: invalid query." << std::endl;
-		sqlite3_finalize(qry);
-		return;
-	}
-
-	for (unsigned n = 1; true; n++)
-	{
-		sqlite3_bind_int(qry, 1, n);
-
-		std::string vertices = "";
-		for (unsigned v = 1; v <= n; v++)
-			vertices += std::to_string(v) + ",";
-		vertices.pop_back();
-
-		unsigned k;
-		unsigned i;
-
-		for (k = 0; true; k++)
+		if (!kFile.is_open())
 		{
-			std::string script = "G = {\n";
-			std::string edges;
-			int empty_index = -1;
-
-			for (i = 0; i < batch_size && sqlite3_step(qry) == SQLITE_ROW; i++)
-			{
-				edges = (char *)sqlite3_column_text(qry, 0) ? (char *)sqlite3_column_text(qry, 0) : "ERROR";
-				Graph g(n, &edges);
-				std::pair<unsigned *, unsigned *> closed_ordering = g.gen_closed_ordering();
-				script += g.convert_to_string_wrt_ordering(closed_ordering.second) + ",\n";
-				delete[] closed_ordering.first;
-				delete[] closed_ordering.second;
-				if (edges == "{}")
-					empty_index = i;
-			}
-
-			if (i != 0)
-			{
-				script.pop_back();
-				script.pop_back();
-
-				script += "\n}\n\nneedsPackage(\"Graphs\")\n";
-
-				for (unsigned j = 0; j < required_packages->size(); j++)
-					script += "needsPackage(\"" + required_packages->at(j) + "\")\n";
-
-				size_t cut_index = ideal_type->find_first_of(' ');
-
-				if (cut_index < ideal_type->length() - 1)
-				{
-					
-					std::cout << "Generating M2 scripts failed. Ideal type cannot be a combination two types." << std::endl;
-					sqlite3_finalize(qry);
-					return;
-				}
-				
-				std::ofstream iFile(std::to_string(n) + "-graphs_closed_" + *ideal_type + "_" + std::to_string(k) + ".m2", std::ios::trunc);
-
-				if (!iFile.is_open())
-				{
-					std::cout << "Generating M2 scripts failed. Could not write to file." << std::endl;
-					sqlite3_finalize(qry);
-					return;
-				}
-
-				if (empty_index != -1)
-					script += "\nfor i from 0 to " + std::to_string(empty_index - 1) + " do B_i=betti res monomialIdeal " + *ideal_type + "(graph({" + vertices + "},G_i))\n" \
-					"B_" + std::to_string(empty_index) + "=betti res " + *ideal_type + "(graph({" + vertices + "},G_" + std::to_string(empty_index) + "))\n" \
-					"for i from " + std::to_string(empty_index + 1) + " to " + std::to_string(i - 1) + " do B_i=betti res monomialIdeal " + *ideal_type + "(graph({" + vertices + "},G_i))\n\n" \
-					"F:=openOut(\"" + std::to_string(n) + "-betti_closed_" + *ideal_type + "_" + std::to_string(k) + ".bt\")\n";
-				else
-					script += "\nfor i from 0 to " + std::to_string(i - 1) + " do B_i=betti res monomialIdeal " + *ideal_type + "(graph({" + vertices + "},G_i))\n\n" \
-					"F:=openOut(\"" + std::to_string(n) + "-betti_closed_" + *ideal_type + "_" + std::to_string(k) + ".bt\")\n";
-
-				script += "for i from 0 to " + std::to_string(i - 1) + " do F << B_i << endl << endl\nclose F";
-
-				iFile << script;
-
-				iFile.close();
-
-				std::cout << "   generated " << n << "-graphs_closed_" << *ideal_type << "_" << k << ".m2\n";
-			}
-
-			if (i < batch_size)
-				break;
+			std::cout << "Generating M2 scripts failed. Unable to write to file '" << *idealname << "_" << std::to_string(k) << ".m2'." << std::endl;
+			sqlite3_finalize(qry);
+			return;
 		}
 
-		sqlite3_clear_bindings(qry);
-		sqlite3_reset(qry);
+		kFile << script;
 
-		if (k == 0
-			&& i == 0)
-			break;
-	}
-
-	sqlite3_finalize(qry);
-}
-
-
-/**
- * generates two files: one for the graphIDs of the graphs in the database that are cones over other graphs, one for the base graphs of these cones
-**/
-void DatabaseInterface::generate_cone_lists() {
-	std::ofstream coneIDsFile("cone_IDs.txt", std::ios::trunc);
-
-	if (!coneIDsFile.is_open())
-	{
-		std::cout << "Generating cone files failed. Could not write to file." << std::endl;
-		return;
-	}
-
-	std::ofstream coneBasesFile("cone_bases.g6", std::ios::trunc);
-
-	if (!coneBasesFile.is_open())
-	{
-		std::cout << "Generating cone files failed. Could not write to file." << std::endl;
-		coneIDsFile.close();
-		return;
-	}
-
-	sqlite3_stmt * qry;
-
-	if (sqlite3_prepare_v2(database, "SELECT graphID,graphOrder,edges FROM Graphs;", -1, &qry, 0) != SQLITE_OK)
-	{
-		std::cout << "Generating cone files failed. SQL error: invalid query." << std::endl;
-		coneIDsFile.close();
-		coneBasesFile.close();
-		sqlite3_finalize(qry);
-		return;
-	}
-
-	while (sqlite3_step(qry) == SQLITE_ROW)
-	{
-		unsigned graphID = sqlite3_column_int(qry, 0);
-		unsigned graphOrder = sqlite3_column_int(qry, 1);
-		std::string edges = (char *)sqlite3_column_text(qry, 2) ? (char *)sqlite3_column_text(qry, 2) : "ERROR";
-
-		Graph g(graphOrder, &edges);
-		Graph base = g.get_base_of_cone();
-
-		if (base.get_order() != 0)
-		{
-			coneIDsFile << graphID << "\n";
-			coneBasesFile << base.convert_to_g6_format() << "\n";
-		}
-	}
-
-	coneIDsFile.close();
-	coneBasesFile.close();
-	sqlite3_finalize(qry);
-}
-
-
-/**
- * compares the regularities of the cones in cone_IDs.txt and of their now canonically labeled base graphs in file of given name
-**/
-void DatabaseInterface::compare_cone_regularities(std::string * filename) {
-	std::ifstream coneIDsFile("cone_IDs.txt");
-
-	if (!coneIDsFile.is_open())
-	{
-		std::cout << "Comparing cone regularities failed. Could not open cone_IDs.txt." << std::endl;
-		return;
-	}
-
-	std::ifstream coneBasesFile(filename->c_str());
-
-	if (!coneBasesFile.is_open())
-	{
-		std::cout << "Comparing cone regularities failed. Could not open " << filename << "." << std::endl;
-		coneIDsFile.close();
-		return;
-	}
-
-	sqlite3_stmt * id_qry;
-
-	if (sqlite3_prepare_v2(database, "SELECT graphOrder,edges,beiReg FROM Graphs WHERE graphID == ?", -1, &id_qry, 0) != SQLITE_OK)
-	{
-		std::cout << "Comparing cone regularities failed. SQL error: invalid query." << std::endl;
-		coneIDsFile.close();
-		coneBasesFile.close();
-		sqlite3_finalize(id_qry);
-		return;
-	}
-
-	sqlite3_stmt * base_qry;
-
-	if (sqlite3_prepare_v2(database, "SELECT graphOrder,edges,beiReg FROM Graphs WHERE graphOrder == ? AND edges == ?", -1, &base_qry, 0) != SQLITE_OK)
-	{
-		std::cout << "Comparing cone regularities failed. SQL error: invalid query." << std::endl;
-		coneIDsFile.close();
-		coneBasesFile.close();
-		sqlite3_finalize(id_qry);
-		sqlite3_finalize(base_qry);
-		return;
-	}
-
-	while (true)
-	{
-		std::string id_line;
-		Graph base;
-
-		if (!getline(coneIDsFile, id_line)
-			|| !base.read_next_g6_format(&coneBasesFile))
-			break;
-
-		std::stringstream id_stream(id_line);
-		unsigned id;
-		if (id_stream >> id)
-			sqlite3_bind_int(id_qry, 1, id);
+		kFile.close();
+		
+		if (empty_edge_indices.empty())
+			std::cout << "      generated '" << *idealname << "_" << std::to_string(k) << ".m2'\n";
 		else
 		{
-			std::cout << "Comparing cone regularities failed. Parse error." << std::endl;
-			coneIDsFile.close();
-			coneBasesFile.close();
-			sqlite3_finalize(id_qry);
-			sqlite3_finalize(base_qry);
-			return;
+			empty_edge_indices.pop_back();
+			std::cout << "      generated '" << *idealname << "_" << std::to_string(k) << ".m2'\n         Note, that graph(s) " << empty_edge_indices << " in this file have no edges.\n         Taking the monomial ideal in this case might not work!\n";
 		}
 
-		if (sqlite3_step(id_qry) != SQLITE_ROW)
-		{
-			std::cout << "Comparing cone regularities failed. Could not find graph with graphID " << id << "." << std::endl;
-			coneIDsFile.close();
-			coneBasesFile.close();
-			sqlite3_finalize(id_qry);
-			sqlite3_finalize(base_qry);
-			return;
-		}
-
-		sqlite3_bind_int(base_qry, 1, base.get_order());
-		sqlite3_bind_text(base_qry, 2, base.convert_to_string().c_str(), -1, SQLITE_TRANSIENT);
-
-		if (sqlite3_step(base_qry) == SQLITE_ROW
-			&& base.get_order() != 1)
-		{
-			if (sqlite3_column_int(id_qry, 2) != sqlite3_column_int(base_qry, 2))
-			{
-				std::cout << "Found non-matching pair: " << sqlite3_column_text(id_qry, 1) << "  " << sqlite3_column_int(id_qry, 0) << " and " << sqlite3_column_text(base_qry, 1) << "  " << sqlite3_column_int(base_qry, 0) << "." << std::endl;
-				coneIDsFile.close();
-				coneBasesFile.close();
-				sqlite3_finalize(id_qry);
-				sqlite3_finalize(base_qry);
-				return;
-			}
-		}
-
-		sqlite3_clear_bindings(id_qry);
-		sqlite3_reset(id_qry);
-		sqlite3_clear_bindings(base_qry);
-		sqlite3_reset(base_qry);
+		if (i < batch_size)
+			break;
 	}
-	
-	std::cout << "Found no non-matching pairs." << std::endl;
-	coneIDsFile.close();
-	coneBasesFile.close();
-	sqlite3_finalize(id_qry);
-	sqlite3_finalize(base_qry);
-	return;
+
+	sqlite3_finalize(qry);
+
+	if (k == 0 && i == 0)
+	{
+		std::cout << "Generating M2 scripts failed. Unable to find any graphs satisfying the condition of the query: '" << qry << "'." << std::endl;
+		return;
+	}
+
+
+	std::string columns = "INSERT INTO Scripts (idealname,";
+	std::string values = "date) VALUES ('" + *idealname + "',";
+
+	if (labeling_name)
+	{
+		columns += "labeling,";
+		values += "'" + std::string(labeling_name) + "',";
+	}
+
+	columns += "batchsize,";
+	values += std::to_string(batch_size) + ",";
+
+	if (query_condition)
+	{
+		columns += "condition,";
+		values += "'" + std::string(query_condition) + "',";
+	}
+
+	values += "datetime())";
+
+	execute_SQL_statement(&(columns + values));
 }
 
 
@@ -903,6 +647,77 @@ void DatabaseInterface::show_status() {
 
 
 /**
+* outputs the status table to the terminal
+**/
+void DatabaseInterface::show_scripts() {
+	sqlite3_stmt * stmt;
+
+	if (sqlite3_prepare_v2(database, "SELECT * FROM Scripts", -1, &stmt, 0) != SQLITE_OK)
+	{
+		std::cout << "SQL error: invalid query." << std::endl;
+		sqlite3_finalize(stmt);
+		return;
+	}
+
+	unsigned colc = sqlite3_column_count(stmt);
+	std::vector<std::string> columns;
+	std::vector<unsigned> widths;
+
+	for (unsigned i = 0; i < colc; i++)
+	{
+		std::string column = sqlite3_column_name(stmt, i);
+		columns.push_back(column);
+		widths.push_back(column.length() + 3);
+	}
+
+	std::vector<std::vector<std::string>> contents;
+	unsigned rowc = 0;
+
+	while (sqlite3_step(stmt) == SQLITE_ROW)
+	{
+		std::vector<std::string> row;
+		for (unsigned i = 0; i < colc; i++)
+		{
+			std::string content;
+			content = (char *)sqlite3_column_text(stmt, i) ? (char *)sqlite3_column_text(stmt, i) : "-";
+
+			row.push_back(content);
+
+			if (widths[i] < content.length() + 3)
+				widths[i] = content.length() + 3;
+		}
+		contents.push_back(row);
+		rowc++;
+	}
+
+	sqlite3_finalize(stmt);
+
+	unsigned last_whitespace = 0;
+	for (unsigned j = 0; j < colc; j++)
+	{
+		std::cout << std::string(last_whitespace, ' ') << columns[j];
+		last_whitespace = widths[j] - columns[j].length();
+	}
+	std::cout << "\n";
+
+	for (unsigned i = 0; i < rowc; i++)
+	{
+		last_whitespace = 0;
+
+		for (unsigned j = 0; j < colc; j++)
+		{
+			std::string content = contents[i][j];
+			std::cout << std::string(last_whitespace, ' ') << content;
+			last_whitespace = widths[j] - content.length();
+		}
+		std::cout << "\n";
+	}
+
+	std::cout << "\n" << std::endl;
+}
+
+
+/**
  * expects a SELECT SQL-statement
  * tries to execute query, save the result and output the view to the terminal
 **/
@@ -1014,6 +829,26 @@ bool DatabaseInterface::create_status_table() {
 		"('[ideal]Schenzel',NULL,'INT',NULL,'column number (starting with 1) of the rightmost non-zero entry of the second row of the Betti table; 1 if there is no second row')," \
 		"('[ideal]Extremals',NULL,'TEXT',NULL,'extremal Betti numbers of the Betti table');";
 	if (!execute_SQL_statement(&statement))
+		return false;
+
+	return true;
+}
+
+
+/**
+* creates the script table in database for ensuring database consistency
+**/
+bool DatabaseInterface::create_scripts_table() {
+	std::string statement = "CREATE TABLE Scripts(" \
+		"scriptID INTEGER PRIMARY KEY," \
+		"idealname TEXT NOT NULL," \
+		"labeling TEXT," \
+		"batchsize INT NOT NULL," \
+		"condition TEXT," \
+		"date TEXT NOT NULL" \
+		");";
+
+	if (sqlite3_exec(database, statement.c_str(), 0, 0, 0) != SQLITE_OK)
 		return false;
 
 	return true;
@@ -1149,13 +984,36 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 /**
  * reads all Betti tables from the files determined by the given order and ideal_type, updates the graphs table and all graphs of given order
 **/
-bool DatabaseInterface::add_betti_data(std::string * idealname, const char * query_condition) {
-	size_t cut_index = idealname->find_first_of(' ');
-	std::string ideal;
-	if (cut_index < idealname->length() - 1)
-		ideal = idealname->substr(0, cut_index) + idealname->substr(cut_index + 1, std::string::npos);
-	else
-		ideal = *idealname;
+bool DatabaseInterface::add_betti_data(unsigned scriptID) {
+	sqlite3_stmt * qry1;
+	if (sqlite3_prepare_v2(database, ("SELECT idealname,condition FROM Scripts WHERE scriptID == " + std::to_string(scriptID)).c_str(), -1, &qry1, 0) != SQLITE_OK)
+	{
+		std::cout << "Adding Betti data failed. SQL error: '" << qry1 << "' is an invalid query." << std::endl;
+		sqlite3_finalize(qry1);
+		return false;
+	}
+
+	if (sqlite3_step(qry1) != SQLITE_ROW)
+	{
+		std::cout << "Adding Betti data failed. There is no open script with scriptID " << scriptID << " in the Scripts table." << std::endl;
+		sqlite3_finalize(qry1);
+		return false;
+	}
+
+	std::string ideal = (char *)sqlite3_column_text(qry1, 0);
+	std::string query_condition = (char *)sqlite3_column_text(qry1, 1) ? (char *)sqlite3_column_text(qry1, 1) : "";
+	sqlite3_finalize(qry1);
+
+
+	size_t cut_index = 0;
+	while (cut_index != std::string::npos)
+	{
+		cut_index = ideal.find_first_of(' ');
+		if (cut_index < ideal.length() - 1)
+			ideal = ideal.substr(0, cut_index) + ideal.substr(cut_index + 1, std::string::npos);
+		else if (cut_index == ideal.length() - 1)
+			ideal.pop_back();
+	}
 
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Bettis TEXT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "PD INT;").c_str(), 0, 0, 0);
@@ -1163,35 +1021,36 @@ bool DatabaseInterface::add_betti_data(std::string * idealname, const char * que
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Schenzel INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Extremals TEXT;").c_str(), 0, 0, 0);
 
-	sqlite3_stmt * qry;
-	if (query_condition)
+
+	sqlite3_stmt * qry2;
+	if (query_condition.empty())
 	{
-		if (sqlite3_prepare_v2(database, ("SELECT graphID FROM Graphs WHERE " + std::string(query_condition) + ";").c_str(), -1, &qry, 0) != SQLITE_OK)
+		if (sqlite3_prepare_v2(database, "SELECT graphID FROM Graphs", -1, &qry2, 0) != SQLITE_OK)
 		{
-			std::cout << "Adding Betti data failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
-			sqlite3_finalize(qry);
+			std::cout << "Adding Betti data failed. SQL error: '" << qry2 << "' is an invalid query." << std::endl;
+			sqlite3_finalize(qry2);
 			return false;
 		}
 	}
 	else
 	{
-		if (sqlite3_prepare_v2(database, "SELECT graphID FROM Graphs;", -1, &qry, 0) != SQLITE_OK)
+		if (sqlite3_prepare_v2(database, ("SELECT graphID FROM Graphs WHERE " + std::string(query_condition)).c_str(), -1, &qry2, 0) != SQLITE_OK)
 		{
-			std::cout << "Adding Betti data failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
-			sqlite3_finalize(qry);
+			std::cout << "Adding Betti data failed. SQL error: '" << qry2 << "' is an invalid query." << std::endl;
+			sqlite3_finalize(qry2);
 			return false;
 		}
 	}
 	
 
 	std::string statement = "UPDATE Graphs SET " + ideal + "Bettis = ?, " + ideal + "PD = ?, " + ideal + "Reg = ?, " + ideal + "Schenzel = ?, " + ideal + "Extremals = ? WHERE graphID == ?;";
-	sqlite3_stmt * stmt;
+	sqlite3_stmt * stmt1;
 
-	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt, 0) != SQLITE_OK)
+	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt1, 0) != SQLITE_OK)
 	{
-		std::cout << "Adding Betti data failed. SQL error: '" << stmt << "' is an invalid statement." << std::endl;
-		sqlite3_finalize(qry);
-		sqlite3_finalize(stmt);
+		std::cout << "Adding Betti data failed. SQL error: '" << stmt1 << "' is an invalid statement." << std::endl;
+		sqlite3_finalize(qry2);
+		sqlite3_finalize(stmt1);
 		return false;
 	}
 
@@ -1207,8 +1066,8 @@ bool DatabaseInterface::add_betti_data(std::string * idealname, const char * que
 			{
 				std::cout << "Adding Betti data failed. Unable to open 'betti_" << ideal << "_0.bt'." << std::endl;
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
-				sqlite3_finalize(qry);
-				sqlite3_finalize(stmt);
+				sqlite3_finalize(qry2);
+				sqlite3_finalize(stmt1);
 				return false;
 			}
 			break;
@@ -1218,26 +1077,26 @@ bool DatabaseInterface::add_betti_data(std::string * idealname, const char * que
 
 		for (unsigned i = 1; b.read_next_table(&kFile); i++)
 		{
-			if (sqlite3_step(qry) != SQLITE_ROW)
+			if (sqlite3_step(qry2) != SQLITE_ROW)
 			{
 				std::cout << "Adding Betti data failed. There are more tables in the files than graphs of order satisfying condition '" << query_condition << "' in the database." << std::endl;
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
-				sqlite3_finalize(qry);
-				sqlite3_finalize(stmt);
+				sqlite3_finalize(qry2);
+				sqlite3_finalize(stmt1);
 				return false;
 			}
 
-			sqlite3_bind_text(stmt, 1, b.convert_to_line().c_str(), -1, SQLITE_TRANSIENT);
-			sqlite3_bind_int(stmt, 2, b.get_projective_dimension());
-			sqlite3_bind_int(stmt, 3, b.get_regularity());
-			sqlite3_bind_int(stmt, 4, b.get_schenzel_number());
-			sqlite3_bind_text(stmt, 5, b.get_extremal_betti_numbers_as_string().c_str(), -1, SQLITE_TRANSIENT);
-			sqlite3_bind_int(stmt, 6, sqlite3_column_int(qry, 0));
+			sqlite3_bind_text(stmt1, 1, b.convert_to_line().c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int(stmt1, 2, b.get_projective_dimension());
+			sqlite3_bind_int(stmt1, 3, b.get_regularity());
+			sqlite3_bind_int(stmt1, 4, b.get_schenzel_number());
+			sqlite3_bind_text(stmt1, 5, b.get_extremal_betti_numbers_as_string().c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int(stmt1, 6, sqlite3_column_int(qry2, 0));
 
-			sqlite3_step(stmt);
+			sqlite3_step(stmt1);
 
-			sqlite3_clear_bindings(stmt);
-			sqlite3_reset(stmt);
+			sqlite3_clear_bindings(stmt1);
+			sqlite3_reset(stmt1);
 
 			count++;
 
@@ -1252,118 +1111,10 @@ bool DatabaseInterface::add_betti_data(std::string * idealname, const char * que
 		std::cout << "      " << count << " graphs updated.\n";
 	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 
-	sqlite3_finalize(qry);
-	sqlite3_finalize(stmt);
+	sqlite3_finalize(qry2);
+	sqlite3_finalize(stmt1);
 
-	return true;
-}
-
-
-/**
-* reads all Betti tables from the files determined by the given order and ideal_type, updates the graphs table and all closed graphs of given order
-**/
-bool DatabaseInterface::add_closed_labeling_betti_data(unsigned order, std::string * name, std::string * ideal_type) {
-	size_t cut_index = ideal_type->find_first_of(' ');
-	std::string filename;
-	if (cut_index < ideal_type->length() - 1)
-	{
-		std::cout << "Generating M2 scripts failed. Ideal type cannot be a combination two types." << std::endl;
-		return false;
-	}
-	else
-		filename = "closed_" + *ideal_type;
-
-	size_t cut_index_2 = name->find_first_of(' ');
-	std::string ideal;
-	if (cut_index_2 < name->length() - 1)
-		ideal = name->substr(0, cut_index_2) + name->substr(cut_index_2 + 1, std::string::npos);
-	else
-		ideal = *name;
-
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Bettis TEXT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "PD INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Reg INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Schenzel INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Extremals TEXT;").c_str(), 0, 0, 0);
-
-	sqlite3_stmt * qry;
-	if (sqlite3_prepare_v2(database, ("SELECT graphID FROM Graphs WHERE graphOrder == " + std::to_string(order) + " AND type LIKE '%closed%';").c_str(), -1, &qry, 0) != SQLITE_OK)
-	{
-		std::cout << "Adding Betti data failed. SQL error: invalid query." << std::endl;
-		sqlite3_finalize(qry);
-		return false;
-	}
-
-	std::string statement = "UPDATE Graphs SET " + ideal + "Bettis = ?, " + ideal + "PD = ?, " + ideal + "Reg = ?, " + ideal + "Schenzel = ?, " + ideal + "Extremals = ? WHERE graphID == ?;";
-	sqlite3_stmt * stmt;
-
-	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt, 0) != SQLITE_OK)
-	{
-		std::cout << "Adding Betti data failed. SQL error: invalid statement." << std::endl;
-		sqlite3_finalize(qry);
-		sqlite3_finalize(stmt);
-		return false;
-	}
-
-	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
-	unsigned count = 0;
-	for (unsigned k = 0; true; k++)
-	{
-		std::ifstream kFile(std::to_string(order) + "-betti_" + filename + "_" + std::to_string(k) + ".bt");
-
-		if (!kFile.is_open())
-		{
-			if (k == 0)
-			{
-				std::cout << "Adding Betti data failed. Could not open " << order << "-betti_" << filename << "_0.bt." << std::endl;
-				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
-				sqlite3_finalize(qry);
-				sqlite3_finalize(stmt);
-				return false;
-			}
-			break;
-		}
-
-		BettiTable b;
-
-		for (unsigned i = 1; b.read_next_table(&kFile); i++)
-		{
-			if (sqlite3_step(qry) != SQLITE_ROW)
-			{
-				std::cout << "Adding Betti data failed. There are more tables in the file than graphs of order " << order << " in the database." << std::endl;
-				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
-				sqlite3_finalize(qry);
-				sqlite3_finalize(stmt);
-				return false;
-			}
-
-			sqlite3_bind_text(stmt, 1, b.convert_to_line().c_str(), -1, SQLITE_TRANSIENT);
-			sqlite3_bind_int(stmt, 2, b.get_projective_dimension());
-			sqlite3_bind_int(stmt, 3, b.get_regularity());
-			sqlite3_bind_int(stmt, 4, b.get_schenzel_number());
-			sqlite3_bind_text(stmt, 5, b.get_extremal_betti_numbers_as_string().c_str(), -1, SQLITE_TRANSIENT);
-			sqlite3_bind_int(stmt, 6, sqlite3_column_int(qry, 0));
-
-			sqlite3_step(stmt);
-
-			sqlite3_clear_bindings(stmt);
-			sqlite3_reset(stmt);
-
-			count++;
-
-			if (count == 10000)
-			{
-				std::cout << "   " << count << " graphs updated.\n";
-				count = 0;
-			}
-		}
-	}
-	if (count != 0)
-		std::cout << "   " << count << " graphs updated.\n";
-	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
-
-	sqlite3_finalize(qry);
-	sqlite3_finalize(stmt);
+	execute_SQL_statement(&("DELETE FROM Scripts WHERE scriptID == " + std::to_string(scriptID)));
 
 	return true;
 }

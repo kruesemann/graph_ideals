@@ -77,19 +77,25 @@
 
 
 typedef bool (Graph::*Graph_test) ();
+typedef unsigned* (Graph::*Gen_labeling) ();
 
-#define NUMBER_LABELS 6
-const char* LABELS[NUMBER_LABELS] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed" };
-const char* PRINT_NAMES[NUMBER_LABELS] = { "connected graphs", "cographs", "euler graphs", "chordal graphs", "claw-free graphs", "closed graphs" };
-Graph_test TESTS[NUMBER_LABELS] = { &Graph::is_connected, &Graph::is_cograph, &Graph::is_euler, &Graph::is_chordal, &Graph::is_clawfree, &Graph::is_closed };
-const char* STD_CONDITIONS[NUMBER_LABELS] = { 0, 0, 0, 0, 0, "type LIKE '%chordal%' AND type LIKE '%claw-free%'" };
+#define NUMBER_TYPES 6
+const char* TYPES[NUMBER_TYPES] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed" };
+const char* PRINT_NAMES[NUMBER_TYPES] = { "connected graphs", "cographs", "euler graphs", "chordal graphs", "claw-free graphs", "closed graphs" };
+Graph_test TESTS[NUMBER_TYPES] = { &Graph::is_connected, &Graph::is_cograph, &Graph::is_euler, &Graph::is_chordal, &Graph::is_clawfree, &Graph::is_closed };
+const char* STD_CONDITIONS[NUMBER_TYPES] = { 0, 0, 0, 0, 0, "type LIKE '%chordal%' AND type LIKE '%claw-free%'" };
+
+#define NUMBER_LABELINGS 1
+const char* LABELINGS[NUMBER_LABELINGS] = { "closed" };
+Gen_labeling GENERATORS[NUMBER_LABELINGS] = { &Graph::gen_closed_labeling };
+
 
 //########## IO functions ##########
 /**
  * gets the user input and returns the interaction key based on the keyword of the input
 **/
 int io_interface(std::string * input) {
-	std::cout << "\n> ";
+	std::cout << "\n>> ";
 
 	if (!getline(std::cin, *input))
 		return 0;
@@ -119,7 +125,7 @@ int io_interface(std::string * input) {
 		key = 5;
 	else if (keyword == "betti")
 		key = 6;
-	else if (keyword == "script")
+	else if (keyword == "scripts")
 		key = 7;
 
 	if (key > 0)
@@ -234,7 +240,7 @@ void show_parse(DatabaseInterface * dbi, std::string * input) {
 		{
 			if (limit != -1)
 			{
-				std::cout << "Warning: " << arg << " will be ignored since a limit was already specified. Proceed? (y/n)\n> ";
+				std::cout << "Warning: " << arg << " will be ignored since a limit was already specified. Proceed? (y/n)\n>> ";
 				std::string extra_input;
 				while (true)
 				{
@@ -243,7 +249,7 @@ void show_parse(DatabaseInterface * dbi, std::string * input) {
 						break;
 					if (extra_input == "n")
 						return;
-					std::cout << "Parse error: Not a valid input.\n> ";
+					std::cout << "Parse error: Not a valid input.\n>> ";
 				}
 				std::cout << std::endl;
 			}
@@ -252,7 +258,7 @@ void show_parse(DatabaseInterface * dbi, std::string * input) {
 		}
 		else if (force)
 		{
-			std::cout << "Warning: " << arg << " will be ignored since -f was given as an argument. Proceed? (y/n)\n> ";
+			std::cout << "Warning: " << arg << " will be ignored since -f was given as an argument. Proceed? (y/n)\n>> ";
 			std::string extra_input;
 			while (true)
 			{
@@ -261,7 +267,7 @@ void show_parse(DatabaseInterface * dbi, std::string * input) {
 					break;
 				if (extra_input == "n")
 					return;
-				std::cout << "Parse error: Not a valid input.\n> ";
+				std::cout << "Parse error: Not a valid input.\n>> ";
 			}
 			std::cout << std::endl;
 		}
@@ -379,7 +385,7 @@ void save_parse(DatabaseInterface * dbi, std::string * input) {
 
 			if (test.is_open())
 			{
-				std::cout << file_name << " already exists. Override? (y/n)\n> ";
+				std::cout << file_name << " already exists. Override? (y/n)\n>> ";
 				std::string extra_input;
 				while (true)
 				{
@@ -391,7 +397,7 @@ void save_parse(DatabaseInterface * dbi, std::string * input) {
 						test.close();
 						return;
 					}
-					std::cout << "Parse error: Not a valid input.\n> ";
+					std::cout << "Parse error: Not a valid input.\n>> ";
 				}
 			}
 
@@ -545,73 +551,42 @@ void insert_parse(DatabaseInterface * dbi, std::string * input) {
 * parses the arguments for betti
 **/
 void betti_parse(DatabaseInterface * dbi, std::string * input) {
-	bool condition = false;
-	std::string query_condition = "";
-	std::string idealname = "";
+	int scriptID = -1;
 
 	while (!input->empty())
 	{
 		size_t cut_index;
 		std::string arg;
 
-		if (condition)
-		{
-			if (input->front() == '"')
-			{
-				arg = input->substr(1, std::string::npos);
-				cut_index = arg.find_first_of('"');
+		cut_index = input->find_first_of(' ');
+		arg = input->substr(0, cut_index);
 
-				if (cut_index == std::string::npos)
+		if (arg.front() != '-')
+		{
+			std::cout << "Parse Error: '" << arg << "' is not a valid argument." << std::endl;
+			return;
+		}
+
+		if (scriptID == -1)
+		{
+			scriptID = 0;
+			for (unsigned i = 1; i < arg.length(); i++)
+			{
+				if (arg.at(i) < '0'
+					|| arg.at(i) > '9')
 				{
-					std::cout << "Parse error: Second '\"' missing." << std::endl;
+					std::cout << "Parse error: '" << arg << "' is not a valid argument." << std::endl;
 					return;
 				}
 
-				query_condition = arg.substr(0, cut_index);
-				cut_index += 2;
+				scriptID *= 10;
+				scriptID += arg.at(i) - '0';
 			}
-			else
-			{
-				std::cout << "Parse error: '-where' must be followed by an sql-expression in quotation marks (\"\")." << std::endl;
-				return;
-			}
-
-			condition = false;
 		}
 		else
 		{
-			if (input->front() == '"')
-			{
-				arg = input->substr(1, std::string::npos);
-				cut_index = arg.find_first_of('"');
-
-				if (cut_index == std::string::npos)
-				{
-					std::cout << "Parse error: Second '\"' missing." << std::endl;
-					return;
-				}
-
-				arg = arg.substr(0, cut_index);
-				cut_index += 2;
-			}
-			else
-			{
-				cut_index = input->find_first_of(' ');
-				arg = input->substr(0, cut_index);
-			}
-
-			if (arg == "-where")
-				condition = true;
-			else
-			{
-				if (idealname.empty())
-					idealname = arg;
-				else
-				{
-					std::cout << "Parse error: Either an argument is invalid or there are too many." << std::endl;
-					return;
-				}
-			}
+			std::cout << "Parse error: Too many arguments." << std::endl;
+			return;
 		}
 
 		if (cut_index < input->length() - 1)
@@ -620,19 +595,34 @@ void betti_parse(DatabaseInterface * dbi, std::string * input) {
 			*input = "";
 	}
 
-	if (idealname.empty())
+	if (scriptID == -1)
 	{
-		std::cout << "Adding Betti data failed. No ideal name specified." << std::endl;
-		return;
+		dbi->show_scripts();
+
+		std::cout << "Please select a scriptID to add the results of those M2 scripts.\n\n>> ";
+		std::string arg;
+		if (!getline(std::cin, arg))
+			return;
+
+		std::cout << std::endl;
+
+		scriptID = 0;
+		for (unsigned i = 0; i < arg.length(); i++)
+		{
+			if (arg.at(i) < '0'
+				|| arg.at(i) > '9')
+			{
+				std::cout << "Parse error: '" << arg << "' is not a number." << std::endl;
+				return;
+			}
+
+			scriptID *= 10;
+			scriptID += arg.at(i) - '0';
+		}
 	}
 
-	if (idealname.find("Bettis") == std::string::npos)
-	{
-		std::cout << "   adding Betti data...\n";
-		dbi->add_betti_data(&idealname, query_condition.empty() ? 0 : query_condition.c_str());
-	}
-	else
-		std::cout << "Adding Betti data failed. Please choose an ideal name other than " << idealname << " as anything with 'Bettis' in it would interfere with the database." << std::endl;
+	std::cout << "   adding Betti data...\n";
+	dbi->add_betti_data(scriptID);
 }
 
 
@@ -645,7 +635,7 @@ void label_parse(DatabaseInterface * dbi, std::string * input) {
 	bool condition = false;
 	std::string query_condition = "";
 
-	for (int i = 0; i < NUMBER_LABELS; i++)
+	for (int i = 0; i < NUMBER_TYPES; i++)
 		to_be_labeled.push_back(false);
 
 	while (!input->empty())
@@ -689,16 +679,16 @@ void label_parse(DatabaseInterface * dbi, std::string * input) {
 			else
 			{
 				int i;
-				for (i = 0; i < NUMBER_LABELS; i++)
+				for (i = 0; i < NUMBER_TYPES; i++)
 				{
-					if (arg == "-" + std::string(LABELS[i]))
+					if (arg == "-" + std::string(TYPES[i]))
 					{
 						to_be_labeled[i] = true;
 						break;
 					}
 				}
 
-				if (i >= NUMBER_LABELS)
+				if (i >= NUMBER_TYPES)
 				{
 					std::cout << "Parse error: '" << arg << "' is not a valid argument." << std::endl;
 					return;
@@ -714,18 +704,18 @@ void label_parse(DatabaseInterface * dbi, std::string * input) {
 
 	if (allexcept)
 	{
-		for (int i = 0; i < NUMBER_LABELS; i++)
+		for (int i = 0; i < NUMBER_TYPES; i++)
 			to_be_labeled[i] = !to_be_labeled[i];
 	}
 
-	for (int i = 0; i < NUMBER_LABELS; i++)
+	for (int i = 0; i < NUMBER_TYPES; i++)
 	{
 		if (to_be_labeled[i])
 		{
 			if (STD_CONDITIONS[i])
-				commission_type_update(dbi, PRINT_NAMES[i], LABELS[i], TESTS[i], query_condition.empty() ? STD_CONDITIONS[i] : (std::string(STD_CONDITIONS[i]) + " AND " + query_condition).c_str());
+				commission_type_update(dbi, PRINT_NAMES[i], TYPES[i], TESTS[i], query_condition.empty() ? STD_CONDITIONS[i] : (std::string(STD_CONDITIONS[i]) + " AND " + query_condition).c_str());
 			else
-				commission_type_update(dbi, PRINT_NAMES[i], LABELS[i], TESTS[i], query_condition.empty() ? 0 : query_condition.c_str());
+				commission_type_update(dbi, PRINT_NAMES[i], TYPES[i], TESTS[i], query_condition.empty() ? 0 : query_condition.c_str());
 		}
 	}
 }
@@ -735,58 +725,99 @@ void label_parse(DatabaseInterface * dbi, std::string * input) {
  * parses the arguments for gen_M2_scripts and calls gen_m2_scripts with the appropriate arguments
 **/
 void script_parse(DatabaseInterface * dbi, std::string * input) {
-	bool cl = false;
-	std::string ideal_type = "";
+	bool condition = false;
 	int batch_size = -1;
-	std::vector<std::string> required_packages;
+	int labeling = -1;
+	std::string idealname = "";
+	std::string filename = "";
+	std::string query_condition = "";
 
 	while (!input->empty())
 	{
 		size_t cut_index;
 		std::string arg;
 
-		if (input->front() == '"')
+		if (condition)
 		{
-			arg = input->substr(1, std::string::npos);
-			cut_index = arg.find_first_of('"');
-
-			if (cut_index == std::string::npos)
+			if (input->front() == '"')
 			{
-				std::cout << "Parse error: '\"' missing." << std::endl;
-				return;
-			}
+				arg = input->substr(1, std::string::npos);
+				cut_index = arg.find_first_of('"');
 
-			arg = arg.substr(0, cut_index);
-			cut_index += 2;
-		}
-		else
-		{
-			cut_index = input->find_first_of(' ');
-			arg = input->substr(0, cut_index);
-		}
-
-		if (arg == "-cl")
-			cl = true;
-		else if (arg.front() == '-')
-		{
-			batch_size = 0;
-			for (unsigned i = 1; i < arg.length(); i++)
-			{
-				if (arg.at(i) < '0'
-					|| arg.at(i) > '9')
+				if (cut_index == std::string::npos)
 				{
-					std::cout << "Parse error: " << arg << " is not a valid argument." << std::endl;
+					std::cout << "Parse error: '\"' missing." << std::endl;
 					return;
 				}
 
-				batch_size *= 10;
-				batch_size += arg.at(i) - '0';
+				query_condition = arg.substr(0, cut_index);
+				cut_index += 2;
 			}
+			else
+			{
+				std::cout << "Parse error: '-where' must be followed by an sql-expression in quotation marks (\"\")." << std::endl;
+				return;
+			}
+
+			condition = false;
 		}
-		else if (ideal_type.empty())
-			ideal_type = arg;
 		else
-			required_packages.push_back(arg);
+		{
+			if (input->front() == '"')
+			{
+				arg = input->substr(1, std::string::npos);
+				cut_index = arg.find_first_of('"');
+
+				if (cut_index == std::string::npos)
+				{
+					std::cout << "Parse error: '\"' missing." << std::endl;
+					return;
+				}
+
+				arg = arg.substr(0, cut_index);
+				cut_index += 2;
+			}
+			else
+			{
+				cut_index = input->find_first_of(' ');
+				arg = input->substr(0, cut_index);
+			}
+
+			if (arg == "-where")
+				condition = true;
+			else if (arg.front() == '-')
+			{
+				for (int i = 0; i < NUMBER_LABELINGS; i++)
+				{
+					if (arg == "-" + std::string(LABELINGS[i]))
+					{
+						labeling = i;
+						break;
+					}
+				}
+
+				if (labeling == -1)
+				{
+					batch_size = 0;
+					for (unsigned i = 1; i < arg.length(); i++)
+					{
+						if (arg.at(i) < '0'
+							|| arg.at(i) > '9')
+						{
+							std::cout << "Parse error: " << arg << " is not a valid argument." << std::endl;
+							return;
+						}
+
+						batch_size *= 10;
+						batch_size += arg.at(i) - '0';
+					}
+				}
+			}
+			else if (idealname.empty())
+				idealname = arg;
+			else
+				filename = arg;
+		}
 
 		if (cut_index < input->length() - 1)
 			*input = input->substr(cut_index + 1, std::string::npos);
@@ -794,27 +825,18 @@ void script_parse(DatabaseInterface * dbi, std::string * input) {
 			*input = "";
 	}
 
-	if (batch_size == -1)
+	if (idealname.empty())
 	{
-		std::cout << "Generating M2 scripts failed. No batch size specified." << std::endl;
+		std::cout << "Generating M2 scripts failed. No ideal name specified.\n" << std::endl;
 		return;
 	}
 
-	if (ideal_type.empty())
+	if (idealname.find("Bettis") == std::string::npos)
 	{
-		std::cout << "Generating M2 scripts failed. No ideal type specified.\n" << std::endl;
-		return;
-	}
-
-	if (ideal_type.find("Bettis") == std::string::npos)
-	{
-		if (cl)
-			dbi->generate_closed_labeling_m2_scripts(&ideal_type, batch_size, &required_packages);
-		else
-			dbi->generate_m2_scripts(&ideal_type, batch_size, &required_packages);
+		dbi->generate_m2_scripts(&idealname, labeling == -1 ? 0 : GENERATORS[labeling], batch_size == -1 ? 2500 : batch_size, query_condition.empty() ? 0 : query_condition.c_str(), filename.empty() ? 0 : filename.c_str(), labeling == -1 ? 0 : LABELINGS[labeling]);
 	}
 	else
-		std::cout << "Generating M2 scripts failed. Please choose an ideal type other than " << ideal_type << " as anything with 'Bettis' in it would interfere with the database." << std::endl;
+		std::cout << "Generating M2 scripts failed. Please choose an ideal name other than " << idealname << " as anything with 'Bettis' in it would interfere with the database." << std::endl;
 }
 
 
@@ -840,6 +862,7 @@ int main(int argc, char* argv[]) {
 		dbi = DatabaseInterface("Graphs.db");
 
 	dbi.create_status_table();
+	dbi.create_scripts_table();
 	dbi.create_graphs_table();
 
 	while (true)
