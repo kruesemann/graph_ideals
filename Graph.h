@@ -3,6 +3,9 @@
 #include "stdafx.h"
 
 
+enum class FORMAT {NONE, G6, LIST, ADJ};
+
+
 class Graph
 {
 private:
@@ -74,8 +77,9 @@ public:
 	std::string convert_to_g6_format();
 	bool adjacent(unsigned v, unsigned w);
 	unsigned get_size();
-	bool read_next_adjacency_list(std::ifstream * file);
+	bool read_next_adjacency_format(std::ifstream * file);
 	bool read_next_g6_format(std::ifstream * file);
+	bool read_next_list_format(std::ifstream * file);
 
 	std::pair<unsigned, unsigned> get_clique_numbers();
 	bool is_connected();

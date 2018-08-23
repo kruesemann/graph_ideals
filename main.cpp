@@ -75,6 +75,15 @@
 					"UPDATE Graphs SET type = NULL;\n" \
 					"UPDATE Status SET checked = 0 WHERE specification == \"connected\";"
 
+
+typedef bool (Graph::*Graph_test) ();
+
+#define NUMBER_LABELS 6
+const char* LABELS[NUMBER_LABELS] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed" };
+const char* PRINT_NAMES[NUMBER_LABELS] = { "connected graphs", "cographs", "euler graphs", "chordal graphs", "claw-free graphs", "closed graphs" };
+Graph_test TESTS[NUMBER_LABELS] = { &Graph::is_connected, &Graph::is_cograph, &Graph::is_euler, &Graph::is_chordal, &Graph::is_clawfree, &Graph::is_closed };
+const char* STD_CONDITIONS[NUMBER_LABELS] = { 0, 0, 0, 0, 0, "type LIKE '%chordal%' AND type LIKE '%claw-free%'" };
+
 //########## IO functions ##########
 /**
  * gets the user input and returns the interaction key based on the keyword of the input
@@ -100,16 +109,18 @@ int io_interface(std::string * input) {
 		key = 0;
 	else if (keyword == "help")
 		key = 1;
-	else if (keyword == "show_view")
+	else if (keyword == "show")
 		key = 2;
-	else if (keyword == "save_view")
+	else if (keyword == "save")
 		key = 3;
-	else if (keyword == "build")
+	else if (keyword == "insert")
 		key = 4;
-	else if (keyword == "gen_m2_scripts")
+	else if (keyword == "label")
 		key = 5;
-	else if (keyword == "analyse_cones")
+	else if (keyword == "betti")
 		key = 6;
+	else if (keyword == "script")
+		key = 7;
 
 	if (key > 0)
 	{
@@ -185,9 +196,9 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
- * parses the arguments for show_view to decide the output format and the limit for the number of output rows, then chooses the appropriate function
+ * parses the arguments for show to decide the output format and the limit for the number of output rows, then chooses the appropriate function
 **/
-void show_view_parse(DatabaseInterface * dbi, std::string * input) {
+void show_parse(DatabaseInterface * dbi, std::string * input) {
 	int limit = -1;
 	bool force = false;
 	bool rich = false;
@@ -305,9 +316,9 @@ void show_view_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
-* parses the arguments for save_view to decide the output format and the file name, tries to open the file, then chooses the appropriate function
+* parses the arguments for save to decide the output format and the file name, tries to open the file, then chooses the appropriate function
 **/
-void save_view_parse(DatabaseInterface * dbi, std::string * input) {
+void save_parse(DatabaseInterface * dbi, std::string * input) {
 	std::string file_name = "database.view";
 	bool rich = false;
 	bool visualisation = false;
@@ -421,80 +432,23 @@ void save_view_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
- * chooses the graphs to be updated
+ * issues the type-update query to the database
 **/
-bool commission_type_update(DatabaseInterface * dbi, int order, bool max, bool force, const char * print_name, const char * type, bool (Graph::*graph_test)(), const char * query_condition) {
-	if (order == -1)
-	{
-		if (max)
-		{
-			std::cout << "Updating " << print_name << " failed. No maximum graph order specified." << std::endl;
-			return false;
-		}
-
-		for (unsigned n = 1; true; n++)
-		{
-			std::cout << "   checking for " << print_name << " of order " << n << "...\n";
-			if (!force
-				&& dbi->checked(type, n))
-				std::cout << "Update failed. The " << print_name << " of order " << order << " already labeled. Reset type and status table manually to restart all labeling or type '-f' as an argument to force the update." << std::endl;
-			else if (dbi->update_type(n, graph_test, type, query_condition))
-				dbi->update_status(type, n);
-			else
-				break;
-		}
-	}
+bool commission_type_update(DatabaseInterface * dbi, const char * print_name, const char * type, Graph_test test, const char * query_condition) {
+	std::cout << "   checking for " << print_name << "...\n";
+	if (dbi->update_type(test, type, query_condition))
+		return true;
 	else
-	{
-		if (max)
-		{
-			for (int n = 1; n <= order; n++)
-			{
-				std::cout << "   checking for " << print_name << " of order " << n << "...\n";
-				if (!force
-					&& dbi->checked(type, n))
-					std::cout << "Update failed. The " << print_name << " of order " << order << " already labeled. Reset type and status table manually to restart all labeling or type '-f' as an argument to force the update." << std::endl;
-				else if (dbi->update_type(n, graph_test, type, query_condition))
-					dbi->update_status(type, n);
-			}
-		}
-		else if (!force
-			&& dbi->checked(type, order))
-			std::cout << "Update failed. The " << print_name << " of order " << order << " already labeled. Reset type and status table manually to restart all labeling or type '-f' as an argument to force the update." << std::endl;
-		else
-		{
-			std::cout << "   checking for " << print_name << "...\n";
-			if (dbi->update_type(order, graph_test, type, query_condition))
-				dbi->update_status(type, order);
-		}
-	}
-
-	return true;
+		return false;
 }
 
 
 /**
- * parses the arguments for build and looks up the status table to decide what build functions to execute
+* parses the arguments for insert
 **/
-void build_parse(DatabaseInterface * dbi, std::string * input) {
-	dbi->create_status_table();
-	dbi->create_graphs_table();
-
-	bool except = false;
-	bool force = false;
-	bool insert = false;
-	bool connected = false;
-	bool cograph = false;
-	bool euler = false;
-	bool chordal = false;
-	bool clawfree = false;
-	bool closed = false;
-	bool betti = false;
-	bool cl = false;
-	bool max = false;
-	int order = -1;
-	std::string name = "";
-	std::string type = "";
+void insert_parse(DatabaseInterface * dbi, std::string * input) {
+	FORMAT format = FORMAT::NONE;
+	std::string filename = "";
 
 	while (!input->empty())
 	{
@@ -508,7 +462,7 @@ void build_parse(DatabaseInterface * dbi, std::string * input) {
 
 			if (cut_index == std::string::npos)
 			{
-				std::cout << "Parse error: '\"' missing." << std::endl;
+				std::cout << "Parse error: Second '\"' missing." << std::endl;
 				return;
 			}
 
@@ -521,54 +475,35 @@ void build_parse(DatabaseInterface * dbi, std::string * input) {
 			arg = input->substr(0, cut_index);
 		}
 
-		if (arg == "-except")
-			except = true;
-		else if (arg == "-f")
-			force = true;
-		else if (arg == "-insert")
-			insert = true;
-		else if (arg == "-connected")
-			connected = true;
-		else if (arg == "-cograph")
-			cograph = true;
-		else if (arg == "-euler")
-			euler = true;
-		else if (arg == "-chordal")
-			chordal = true;
-		else if (arg == "-claw-free")
-			clawfree = true;
-		else if (arg == "-closed")
-			closed = true;
-		else if (arg == "-betti")
-			betti = true;
-		else if (arg == "-cl")
-			cl = true;
-		else if (arg == "-max")
-			max = true;
-		else if (arg.front() == '-')
+		if (arg == "-g6")
 		{
-			order = 0;
-			for (unsigned i = 1; i < arg.length(); i++)
+			if (format == FORMAT::NONE)
+				format = FORMAT::G6;
+			else
 			{
-				if (arg.at(i) < '0'
-					|| arg.at(i) > '9')
-				{
-					std::cout << "Parse error: " << arg << " is not a valid argument." << std::endl;
-					return;
-				}
-
-				order *= 10;
-				order += arg.at(i) - '0';
+				std::cout << "Parse error: Format already specified." << std::endl;
+				return;
 			}
 		}
-		else if (name.empty())
-			name = arg;
-		else if (type.empty())
-			type = arg;
+		else if (arg == "-list")
+		{
+			if (format == FORMAT::NONE)
+				format = FORMAT::LIST;
+			else
+			{
+				std::cout << "Parse error: Format already specified." << std::endl;
+				return;
+			}
+		}
 		else
 		{
-			std::cout << "Parse error: Could not process argument. Either " << arg << " is not valid or there are too many." << std::endl;
-			return;
+			if (filename.empty())
+				filename = arg;
+			else
+			{
+				std::cout << "Parse error: Either an argument is invalid or there are too many." << std::endl;
+				return;
+			}
 		}
 
 		if (cut_index < input->length() - 1)
@@ -577,130 +512,221 @@ void build_parse(DatabaseInterface * dbi, std::string * input) {
 			*input = "";
 	}
 
-	if (except)
+	if (format == FORMAT::NONE)
 	{
-		insert = !insert;
-		connected = !connected;
-		cograph = !cograph;
-		euler = !euler;
-		chordal = !chordal;
-		clawfree = !clawfree;
-		closed = !closed;
-		betti = !betti;
+		std::cout << "Inserting graphs failed. No format specified." << std::endl;
+		return;
 	}
 
-	if (insert)
+	std::ifstream file(filename);
+	if (file.is_open())
 	{
-		if (!name.empty())
+		try
 		{
-			std::ifstream file(name);
-			if (file.is_open())
-			{
-				try
-				{
-					std::cout << "   inserting graphs...\n";
-					dbi->insert_graphs(&file);
-				}
-				catch (const char * e)
-				{
-					std::cerr << e << std::endl;
-				}
-			}
-			else
-			{
-				std::cout << "Inserting graphs failed. Could not open " << name << "." << std::endl;
-				return;
-			}
-			file.close();
+			std::cout << "   inserting graphs...\n";
+			dbi->insert_graphs(&file, format);
+
 		}
-		else
+		catch (const char * e)
 		{
-			std::cout << "Inserting graphs failed. No file specified." << std::endl;
-			return;
+			std::cerr << e << std::endl;
 		}
 	}
-
-	if (connected)
-		commission_type_update(dbi, order, max, force, "connected graphs", "connected", &Graph::is_connected, 0);
-
-	if (cograph)
-		commission_type_update(dbi, order, max, force, "cographs", "cograph", &Graph::is_cograph, 0);
-
-	if (euler)
-		commission_type_update(dbi, order, max, force, "euler graphs", "euler", &Graph::is_euler, 0);
-
-	if (chordal)
-		commission_type_update(dbi, order, max, force, "chordal graphs", "chordal", &Graph::is_chordal, 0);
-
-	if (clawfree)
-		commission_type_update(dbi, order, max, force, "claw-free graphs", "claw-free", &Graph::is_clawfree, 0);
-
-	if (closed)
-		commission_type_update(dbi, order, max, force, "closed graphs", "closed", &Graph::is_closed, "type LIKE '%chordal%' AND type LIKE '%claw-free%'");
-
-	if (betti)
+	else
 	{
-		if (type.empty())
-		{
-			if (name.empty())
-			{
-				std::cout << "Adding Betti data failed. No ideal type specified." << std::endl;
-				return;
-			}
-			else
-			{
-				type = name;
-				name = "clInit" + name;
-			}
-		}
+		std::cout << "Inserting graphs failed. Unable to open '" << filename << "'." << std::endl;
+		return;
+	}
+	file.close();
+}
 
-		if (name.find("Bettis") == std::string::npos)
+
+/**
+* parses the arguments for betti
+**/
+void betti_parse(DatabaseInterface * dbi, std::string * input) {
+	bool condition = false;
+	std::string query_condition = "";
+	std::string idealname = "";
+
+	while (!input->empty())
+	{
+		size_t cut_index;
+		std::string arg;
+
+		if (condition)
 		{
-			if (order == -1)
+			if (input->front() == '"')
 			{
-				if (max)
+				arg = input->substr(1, std::string::npos);
+				cut_index = arg.find_first_of('"');
+
+				if (cut_index == std::string::npos)
 				{
-					std::cout << "Adding Betti data failed. No maximum graph order specified." << std::endl;
+					std::cout << "Parse error: Second '\"' missing." << std::endl;
 					return;
 				}
 
-				for (unsigned n = 1; true; n++)
-				{
-					std::cout << "   adding Betti data for graphs of order " << n << "...\n";
-					if (cl)
-					{
-						if (!dbi->add_closed_labeling_betti_data(n, &name, &type))
-							break;
-					}
-					else if (!dbi->add_betti_data(n, &name, &type))
-						break;
-				}
+				query_condition = arg.substr(0, cut_index);
+				cut_index += 2;
 			}
 			else
 			{
-				if (max)
+				std::cout << "Parse error: '-where' must be followed by an sql-expression in quotation marks (\"\")." << std::endl;
+				return;
+			}
+
+			condition = false;
+		}
+		else
+		{
+			if (input->front() == '"')
+			{
+				arg = input->substr(1, std::string::npos);
+				cut_index = arg.find_first_of('"');
+
+				if (cut_index == std::string::npos)
 				{
-					for (int n = 1; n <= order; n++)
-					{
-						std::cout << "   adding Betti data for graphs of order " << n << "...\n";
-						if (cl)
-							dbi->add_closed_labeling_betti_data(n, &name, &type);
-						else
-							dbi->add_betti_data(n, &name, &type);
-					}
+					std::cout << "Parse error: Second '\"' missing." << std::endl;
+					return;
 				}
+
+				arg = arg.substr(0, cut_index);
+				cut_index += 2;
+			}
+			else
+			{
+				cut_index = input->find_first_of(' ');
+				arg = input->substr(0, cut_index);
+			}
+
+			if (arg == "-where")
+				condition = true;
+			else
+			{
+				if (idealname.empty())
+					idealname = arg;
 				else
 				{
-					std::cout << "   adding Betti data...\n";
-					if (cl)
-						dbi->add_closed_labeling_betti_data(order, &name, &type);
-					else
-						dbi->add_betti_data(order, &name, &type);
+					std::cout << "Parse error: Either an argument is invalid or there are too many." << std::endl;
+					return;
 				}
 			}
 		}
+
+		if (cut_index < input->length() - 1)
+			*input = input->substr(cut_index + 1, std::string::npos);
 		else
-			std::cout << "Adding Betti data failed. Please choose a name other than " << name << " for the ideal as anything with 'Bettis' in it would interfere with the database." << std::endl;
+			*input = "";
+	}
+
+	if (idealname.empty())
+	{
+		std::cout << "Adding Betti data failed. No ideal name specified." << std::endl;
+		return;
+	}
+
+	if (idealname.find("Bettis") == std::string::npos)
+	{
+		std::cout << "   adding Betti data...\n";
+		dbi->add_betti_data(&idealname, query_condition.empty() ? 0 : query_condition.c_str());
+	}
+	else
+		std::cout << "Adding Betti data failed. Please choose an ideal name other than " << idealname << " as anything with 'Bettis' in it would interfere with the database." << std::endl;
+}
+
+
+/**
+ * parses the arguments for label
+**/
+void label_parse(DatabaseInterface * dbi, std::string * input) {
+	bool allexcept = false;
+	std::vector<bool> to_be_labeled;
+	bool condition = false;
+	std::string query_condition = "";
+
+	for (int i = 0; i < NUMBER_LABELS; i++)
+		to_be_labeled.push_back(false);
+
+	while (!input->empty())
+	{
+		size_t cut_index;
+		std::string arg;
+
+		if (condition)
+		{
+			if (input->front() == '"')
+			{
+				arg = input->substr(1, std::string::npos);
+				cut_index = arg.find_first_of('"');
+
+				if (cut_index == std::string::npos)
+				{
+					std::cout << "Parse error: Second '\"' missing." << std::endl;
+					return;
+				}
+
+				query_condition = arg.substr(0, cut_index);
+				cut_index += 2;
+			}
+			else
+			{
+				std::cout << "Parse error: '-where' must be followed by an sql-expression in quotation marks (\"\")." << std::endl;
+				return;
+			}
+
+			condition = false;
+		}
+		else
+		{
+			cut_index = input->find_first_of(' ');
+			arg = input->substr(0, cut_index);
+
+			if (arg == "-allexcept")
+				allexcept = true;
+			else if (arg == "-where")
+				condition = true;
+			else
+			{
+				int i;
+				for (i = 0; i < NUMBER_LABELS; i++)
+				{
+					if (arg == "-" + std::string(LABELS[i]))
+					{
+						to_be_labeled[i] = true;
+						break;
+					}
+				}
+
+				if (i >= NUMBER_LABELS)
+				{
+					std::cout << "Parse error: '" << arg << "' is not a valid argument." << std::endl;
+					return;
+				}
+			}
+		}
+
+		if (cut_index < input->length() - 1)
+			*input = input->substr(cut_index + 1, std::string::npos);
+		else
+			*input = "";
+	}
+
+	if (allexcept)
+	{
+		for (int i = 0; i < NUMBER_LABELS; i++)
+			to_be_labeled[i] = !to_be_labeled[i];
+	}
+
+	for (int i = 0; i < NUMBER_LABELS; i++)
+	{
+		if (to_be_labeled[i])
+		{
+			if (STD_CONDITIONS[i])
+				commission_type_update(dbi, PRINT_NAMES[i], LABELS[i], TESTS[i], query_condition.empty() ? STD_CONDITIONS[i] : (std::string(STD_CONDITIONS[i]) + " AND " + query_condition).c_str());
+			else
+				commission_type_update(dbi, PRINT_NAMES[i], LABELS[i], TESTS[i], query_condition.empty() ? 0 : query_condition.c_str());
+		}
 	}
 }
 
@@ -708,7 +734,7 @@ void build_parse(DatabaseInterface * dbi, std::string * input) {
 /**
  * parses the arguments for gen_M2_scripts and calls gen_m2_scripts with the appropriate arguments
 **/
-void gen_M2_scripts_parse(DatabaseInterface * dbi, std::string * input) {
+void script_parse(DatabaseInterface * dbi, std::string * input) {
 	bool cl = false;
 	std::string ideal_type = "";
 	int batch_size = -1;
@@ -792,84 +818,6 @@ void gen_M2_scripts_parse(DatabaseInterface * dbi, std::string * input) {
 }
 
 
-/**
-* parses the arguments for analyse_cones and calls either generate_cone_lists or compare_cone_regularities
-**/
-void analyse_cones_parse(DatabaseInterface * dbi, std::string * input) {
-	bool gen = false;
-	bool comp = false;
-	std::string filename;
-
-	while (!input->empty())
-	{
-		size_t cut_index;
-		std::string arg;
-
-		if (input->front() == '"')
-		{
-			arg = input->substr(1, std::string::npos);
-			cut_index = arg.find_first_of('"');
-
-			if (cut_index == std::string::npos)
-			{
-				std::cout << "Parse error: '\"' missing." << std::endl;
-				return;
-			}
-
-			arg = arg.substr(0, cut_index);
-			cut_index += 2;
-		}
-		else
-		{
-			cut_index = input->find_first_of(' ');
-			arg = input->substr(0, cut_index);
-		}
-
-		if (arg == "-gen")
-		{
-			if (comp)
-				std::cout << "Warning: " << arg << " will be ignored since another option was already specified." << std::endl;
-			else
-				gen = true;
-
-		}
-		else if (arg == "-comp")
-		{
-			if (gen)
-				std::cout << "Warning: " << arg << " will be ignored since another option was already specified." << std::endl;
-			else
-				comp = true;
-		}
-		else if (filename.empty())
-			filename = arg;
-		else
-		{
-			std::cout << "Parse error: Could not process argument. Either " << arg << " is not valid or there are too many." << std::endl;
-			return;
-		}
-
-		if (cut_index < input->length() - 1)
-			*input = input->substr(cut_index + 1, std::string::npos);
-		else
-			*input = "";
-	}
-
-	if (gen)
-	{
-		dbi->generate_cone_lists();
-		return;
-	}
-
-	if (comp)
-	{
-		dbi->compare_cone_regularities(&filename);
-		return;
-	}
-	
-	std::cout << "Analysing cones failed. No valid argument was given." << std::endl;
-}
-
-
 //########## main function ##########
 /**
  * opens the given database (if none is specified it opens 'Graphs.db'),
@@ -891,6 +839,9 @@ int main(int argc, char* argv[]) {
 	else
 		dbi = DatabaseInterface("Graphs.db");
 
+	dbi.create_status_table();
+	dbi.create_graphs_table();
+
 	while (true)
 	{
 		int key = io_interface(&input);
@@ -901,11 +852,12 @@ int main(int argc, char* argv[]) {
 		case -2: dbi.execute_SQL_statement(&input); break;
 		case -1: dbi.execute_SQL_query(&input); break;
 		case 1: help_parse(&dbi, &input); break;
-		case 2: show_view_parse(&dbi, &input); break;
-		case 3: save_view_parse(&dbi, &input); break;
-		case 4: build_parse(&dbi, &input); break;
-		case 5: gen_M2_scripts_parse(&dbi, &input); break;
-		case 6: analyse_cones_parse(&dbi, &input); break;
+		case 2: show_parse(&dbi, &input); break;
+		case 3: save_parse(&dbi, &input); break;
+		case 4: insert_parse(&dbi, &input); break;
+		case 5: label_parse(&dbi, &input); break;
+		case 6: betti_parse(&dbi, &input); break;
+		case 7: script_parse(&dbi, &input); break;
 		default: break;
 		}
 	}

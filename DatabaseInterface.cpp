@@ -1041,8 +1041,16 @@ bool DatabaseInterface::create_graphs_table() {
 /**
  * batch inserts graphs from given file
 **/
-void DatabaseInterface::insert_graphs(std::ifstream * file) {
+void DatabaseInterface::insert_graphs(std::ifstream * file, FORMAT format) {
+	if (format == FORMAT::NONE)
+		throw "noFormat";
+
 	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
+
+	bool (Graph::*read_function)(std::ifstream *) = &Graph::read_next_g6_format;
+	
+	if (format == FORMAT::LIST)
+		read_function = &Graph::read_next_list_format;
 	
 	while (true)
 	{
@@ -1050,7 +1058,7 @@ void DatabaseInterface::insert_graphs(std::ifstream * file) {
 		Graph g;
 		std::string statement = "INSERT INTO Graphs (graphOrder,graphSize,edges,cliqueNumber,maxCliqueNumber) VALUES ";
 
-		for (i = 0; i < 10000 && g.read_next_g6_format(file); i++)
+		for (i = 0; i < 10000 && (g.*read_function)(file); i++)
 		{
 			std::pair<unsigned, unsigned> clique_numbers = g.get_clique_numbers();
 			statement += "(" + std::to_string(g.get_order()) + "," + std::to_string(g.get_size()) + ",'" + g.convert_to_string() + "'," + std::to_string(clique_numbers.first) + "," + std::to_string(clique_numbers.second) + "),";//TEST
@@ -1073,8 +1081,8 @@ void DatabaseInterface::insert_graphs(std::ifstream * file) {
 /**
  * updates the type of all graphs that satisfy graph_test and query_condition
 **/
-bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), const char * type, const char * query_condition) {
-	std::string query = "SELECT graphID,edges,type FROM Graphs WHERE graphOrder == " + std::to_string(order);
+bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * type, const char * query_condition) {
+	std::string query = "SELECT graphID,graphorder,edges,type FROM Graphs WHERE (type IS NULL OR type NOT LIKE '%" + std::string(type) + "%')";
 	if (query_condition)
 		query += " AND " + std::string(query_condition);
 
@@ -1082,7 +1090,7 @@ bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), 
 
 	if (sqlite3_prepare_v2(database, query.c_str(), -1, &qry, 0) != SQLITE_OK)
 	{
-		std::cout << "Update failed. SQL error: " << query << " is an invalid query." << std::endl;
+		std::cout << "Update failed. SQL error: '" << query << "' is an invalid query." << std::endl;
 		sqlite3_finalize(qry);
 		return false;
 	}
@@ -1091,7 +1099,7 @@ bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), 
 
 	if (sqlite3_prepare_v2(database, "UPDATE Graphs SET type = ? WHERE graphID == ?", -1, &stmt, 0) != SQLITE_OK)
 	{
-		std::cout << "Update failed. SQL error: invalid statement." << std::endl;
+		std::cout << "Update failed. SQL error: '" << stmt << "' is an invalid statement." << std::endl;
 		sqlite3_finalize(qry);
 		sqlite3_finalize(stmt);
 		return false;
@@ -1101,12 +1109,12 @@ bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), 
 	unsigned i;
 	for (i = 1; sqlite3_step(qry) == SQLITE_ROW; i++)
 	{
-		std::string edges = ((char *)sqlite3_column_text(qry, 1));
-		Graph g(order, &edges);
+		std::string edges = ((char *)sqlite3_column_text(qry, 2));
+		Graph g(sqlite3_column_int(qry, 1), &edges);
 
 		if ((g.*graph_test)())
 		{
-			sqlite3_bind_text(stmt, 1, sqlite3_column_text(qry, 2) ? (std::string((char *)sqlite3_column_text(qry, 2)) + "," + std::string(type)).c_str() : type, -1, SQLITE_TRANSIENT);
+			sqlite3_bind_text(stmt, 1, sqlite3_column_text(qry, 3) ? (std::string((char *)sqlite3_column_text(qry, 3)) + "," + std::string(type)).c_str() : type, -1, SQLITE_TRANSIENT);
 			sqlite3_bind_int(stmt, 2, sqlite3_column_int(qry, 0));
 
 			sqlite3_step(stmt);
@@ -1117,7 +1125,7 @@ bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), 
 
 		if (i == 10000)
 		{
-			std::cout << "   " << i << " graphs tested\n";
+			std::cout << "      " << i << " graphs tested\n";
 			i = 1;
 		}
 	}
@@ -1127,10 +1135,10 @@ bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), 
 	sqlite3_finalize(stmt);
 
 	if (i > 1)
-		std::cout << "   " << i - 1 << " graphs tested\n";
+		std::cout << "      " << i - 1 << " graphs tested\n";
 	else
 	{
-		std::cout << "Update failed. Could not find any graphs of order " << order << "." << std::endl;
+		std::cout << "   Unable to find any graphs satisfying the condition of the query: " << query << "." << std::endl;
 		return false;
 	}
 
@@ -1141,41 +1149,47 @@ bool DatabaseInterface::update_type(unsigned order, bool(Graph::*graph_test)(), 
 /**
  * reads all Betti tables from the files determined by the given order and ideal_type, updates the graphs table and all graphs of given order
 **/
-bool DatabaseInterface::add_betti_data(unsigned order, std::string * name, std::string * ideal_type) {
-	size_t cut_index = ideal_type->find_first_of(' ');
-	std::string filename;
-	if (cut_index < ideal_type->length() - 1)
-		filename = ideal_type->substr(0, cut_index) + "_" + ideal_type->substr(cut_index + 1, std::string::npos);
-	else
-		filename = *ideal_type;
-
-	size_t cut_index_2 = name->find_first_of(' ');
+bool DatabaseInterface::add_betti_data(std::string * idealname, const char * query_condition) {
+	size_t cut_index = idealname->find_first_of(' ');
 	std::string ideal;
-	if (cut_index_2 < name->length() - 1)
-		ideal = name->substr(0, cut_index_2) + name->substr(cut_index_2 + 1, std::string::npos);
+	if (cut_index < idealname->length() - 1)
+		ideal = idealname->substr(0, cut_index) + idealname->substr(cut_index + 1, std::string::npos);
 	else
-		ideal = *name;
+		ideal = *idealname;
 
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Bettis TEXT;").c_str(), 0, 0 ,0);
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Bettis TEXT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "PD INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Reg INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Schenzel INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + ideal + "Extremals TEXT;").c_str(), 0, 0, 0);
 
 	sqlite3_stmt * qry;
-	if (sqlite3_prepare_v2(database, ("SELECT graphID FROM Graphs WHERE graphOrder == " + std::to_string(order) + ";").c_str(), -1, &qry, 0) != SQLITE_OK)
+	if (query_condition)
 	{
-		std::cout << "Adding Betti data failed. SQL error: invalid query." << std::endl;
-		sqlite3_finalize(qry);
-		return false;
+		if (sqlite3_prepare_v2(database, ("SELECT graphID FROM Graphs WHERE " + std::string(query_condition) + ";").c_str(), -1, &qry, 0) != SQLITE_OK)
+		{
+			std::cout << "Adding Betti data failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
+			sqlite3_finalize(qry);
+			return false;
+		}
 	}
+	else
+	{
+		if (sqlite3_prepare_v2(database, "SELECT graphID FROM Graphs;", -1, &qry, 0) != SQLITE_OK)
+		{
+			std::cout << "Adding Betti data failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
+			sqlite3_finalize(qry);
+			return false;
+		}
+	}
+	
 
 	std::string statement = "UPDATE Graphs SET " + ideal + "Bettis = ?, " + ideal + "PD = ?, " + ideal + "Reg = ?, " + ideal + "Schenzel = ?, " + ideal + "Extremals = ? WHERE graphID == ?;";
 	sqlite3_stmt * stmt;
 
 	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt, 0) != SQLITE_OK)
 	{
-		std::cout << "Adding Betti data failed. SQL error: invalid statement." << std::endl;
+		std::cout << "Adding Betti data failed. SQL error: '" << stmt << "' is an invalid statement." << std::endl;
 		sqlite3_finalize(qry);
 		sqlite3_finalize(stmt);
 		return false;
@@ -1185,13 +1199,13 @@ bool DatabaseInterface::add_betti_data(unsigned order, std::string * name, std::
 	unsigned count = 0;
 	for (unsigned k = 0; true; k++)
 	{
-		std::ifstream kFile(std::to_string(order) + "-betti_" + filename + "_" + std::to_string(k) + ".bt");
+		std::ifstream kFile("betti_" + ideal + "_" + std::to_string(k) + ".bt");
 
 		if (!kFile.is_open())
 		{
 			if (k == 0)
 			{
-				std::cout << "Adding Betti data failed. Could not open " << order << "-betti_" << filename << "_0.bt." << std::endl;
+				std::cout << "Adding Betti data failed. Unable to open 'betti_" << ideal << "_0.bt'." << std::endl;
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 				sqlite3_finalize(qry);
 				sqlite3_finalize(stmt);
@@ -1206,7 +1220,7 @@ bool DatabaseInterface::add_betti_data(unsigned order, std::string * name, std::
 		{
 			if (sqlite3_step(qry) != SQLITE_ROW)
 			{
-				std::cout << "Adding Betti data failed. There are more tables in the file than graphs of order " << order << " in the database." << std::endl;
+				std::cout << "Adding Betti data failed. There are more tables in the files than graphs of order satisfying condition '" << query_condition << "' in the database." << std::endl;
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 				sqlite3_finalize(qry);
 				sqlite3_finalize(stmt);
@@ -1229,13 +1243,13 @@ bool DatabaseInterface::add_betti_data(unsigned order, std::string * name, std::
 
 			if (count == 10000)
 			{
-				std::cout << "   " << count << " graphs updated.\n";
+				std::cout << "      " << count << " graphs updated.\n";
 				count = 0;
 			}
 		}
 	}
 	if (count != 0)
-		std::cout << "   " << count << " graphs updated.\n";
+		std::cout << "      " << count << " graphs updated.\n";
 	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 
 	sqlite3_finalize(qry);

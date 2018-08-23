@@ -61,9 +61,9 @@ public:
 	bool execute_SQL_statement(std::string * statement);
 	bool create_status_table();
 	bool create_graphs_table();
-	void insert_graphs(std::ifstream * file);
-	bool update_type(unsigned order, bool (Graph::*graph_test)(), const char * type, const char * query_condition);
-	bool add_betti_data(unsigned order, std::string * name, std::string * ideal_type);
+	void insert_graphs(std::ifstream * file, FORMAT format);
+	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
+	bool add_betti_data(std::string * idealname, const char * query_condition);
 	bool add_closed_labeling_betti_data(unsigned order, std::string * name, std::string * ideal_type);
 	bool checked(const char * name, unsigned order);
 	void update_status(const char * specification, unsigned order);

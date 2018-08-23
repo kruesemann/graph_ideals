@@ -832,7 +832,7 @@ unsigned Graph::get_size() {
  *   3 : 1 2;
  *
 **/
-bool Graph::read_next_adjacency_list(std::ifstream * file) {
+bool Graph::read_next_adjacency_format(std::ifstream * file) {
 	std::string line = "";
 	while (getline(*file, line) && line.empty());
 
@@ -920,6 +920,75 @@ bool Graph::read_next_g6_format(std::ifstream * file) {
 	}
 
 	read_graph_from_vector(n - 63, &edges);
+
+	return true;
+}
+
+
+/**
+* expects a file where graphs are parsed in a line with vertex number and edge-list, e.g., 3 {1,2},{2,3}
+**/
+bool Graph::read_next_list_format(std::ifstream * file) {
+	std::string line = "";
+	while (getline(*file, line) && line.empty());
+
+	if (line.empty())
+		return false;
+
+	std::vector<std::pair<unsigned, unsigned>> edges;
+	unsigned ord = 0;
+	size = 0;
+
+	int i;
+	for (i = 0; i < line.length() && line.at(i) != ' '; i++)
+	{
+		ord *= 10;
+		ord += line.at(i) - '0';
+	}
+
+	if (i < line.length() && line.at(i) != ' ')
+		throw "parseError";
+	i++;
+
+	while (i < line.length())
+	{
+		unsigned first_vertex = 0;
+		unsigned second_vertex = 0;
+
+		if (line.at(i) != '{')
+			throw "parseError";
+		i++;
+
+		while (i < line.length() && line.at(i) != ',')
+		{
+			first_vertex *= 10;
+			first_vertex += line.at(i) - '0';
+			i++;
+		}
+
+		if (i >= line.length() || line.at(i) != ',')
+			throw "parseError";
+		i++;
+
+		while (i < line.length() && line.at(i) != '}')
+		{
+			second_vertex *= 10;
+			second_vertex += line.at(i) - '0';
+			i++;
+		}
+
+		if (i >= line.length() || line.at(i) != '}')
+			throw "parseError";
+		i++;
+		if (i < line.length() && line.at(i) != ',')
+			throw "parseError";
+		i++;
+
+		edges.push_back(std::pair<unsigned, unsigned>(first_vertex, second_vertex));
+		size++;
+	}
+
+	read_graph_from_vector(ord, &edges);
 
 	return true;
 }
