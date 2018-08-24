@@ -1,7 +1,5 @@
 #pragma once
 
-#include <iostream>
-
 #include "stdafx.h"
 #include "sqlite3.h"
 
@@ -57,13 +55,11 @@ public:
 
 	void generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name);
 
-	void show_status();
 	void show_scripts();
 
 	bool execute_SQL_query(std::string * query);
 	bool execute_SQL_statement(std::string * statement);
 
-	bool create_status_table();
 	bool create_scripts_table();
 	bool create_graphs_table();
 
@@ -72,8 +68,5 @@ public:
 	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
 
 	bool add_betti_data(unsigned scriptID);
-
-	bool checked(const char * name, unsigned order);
-	void update_status(const char * specification, unsigned order);
 };
 

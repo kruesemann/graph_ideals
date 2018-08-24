@@ -29,7 +29,8 @@ inline unsigned nth_power(unsigned x, unsigned n) {
 
 
 /**
- * refines the partitioning by splitting every partition depending on set
+ * refines the partitioning by splitting every partition depending on set,
+ * used for generating a lexicographic labeling
 **/
 void refine(std::list<std::vector<unsigned>> * partitions, bool * set) {
 	std::list<std::vector<unsigned>>::iterator i;
@@ -591,7 +592,10 @@ bool Graph::is_universal(unsigned vertex) {
 **/
 Graph::Graph(unsigned order, unsigned * adj) {
 	if (order > 62)
+	{
+		RESULT("Graph has too many vertices.");
 		throw "tooManyVertices";
+	}
 
 	this->order = order;
 	adjacencies = adj;
@@ -610,13 +614,20 @@ Graph::Graph(unsigned order, unsigned * adj) {
 **/
 void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 	if (order > 62)
-		throw "tooManyVertices";
+	{
+		FAIL("Reading graph from line", "Graph has too many vertices.");
+		return;
+	}
 
 	delete[] adjacencies;
 
 	unsigned length = edges->length();
 	if (length < 2)
-		throw "parseError";
+	{
+		PARSE_ERROR("List of edges incomplete.");
+		FAIL("Reading graph from line", "");
+		return;
+	}
 
 	this->order = order;
 	adjacencies = new unsigned[order * order];
@@ -628,7 +639,11 @@ void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 	for (unsigned i = 1; i < length - 1;)
 	{
 		if (edges->at(i) != '{')
-			throw "parseError";
+		{
+			PARSE_ERROR("Expected '{', got '" << edges->at(i) << "' instead.");
+			FAIL("Reading graph from line", "");
+			return;
+		}
 		i++;
 		
 		unsigned first_vertex = 0;
@@ -651,7 +666,10 @@ void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 
 		if (first_vertex < 1 || first_vertex > order
 			|| second_vertex < 1 || second_vertex > order)
-			throw "parseError";
+		{
+			FAIL("Reading graph from line", "Illegal edge.");
+			return;
+		}
 
 		adjacencies[get_index(first_vertex, second_vertex, order)] = 1;
 		adjacencies[get_index(second_vertex, first_vertex, order)] = 1;
@@ -660,7 +678,11 @@ void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 		if (i >= length
 			|| (edges->at(i) != ',' && edges->at(i) != '}')
 			|| (i == length - 2 && edges->at(i) == ','))
-			throw "parseError";
+		{
+			PARSE_ERROR("Line incomplete.");
+			FAIL("Reading graph from line", "");
+			return;
+		}
 		i++;
 	}
 }
@@ -671,7 +693,10 @@ void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 **/
 void Graph::read_graph_from_vector(unsigned order, std::vector<std::pair<unsigned, unsigned>> * edges) {
 	if (order > 62)
-		throw "tooManyVertices";
+	{
+		FAIL("Reading graph from vector", "Graph has too many vertices.");
+		return;
+	}
 
 	delete[] adjacencies;
 
@@ -688,7 +713,10 @@ void Graph::read_graph_from_vector(unsigned order, std::vector<std::pair<unsigne
 
 		if (edge.first < 1 || edge.first > order
 			|| edge.second < 1 || edge.second > order)
-			throw "parseError";
+		{
+			FAIL("Reading graph from vector", "Illegal edge.");
+			return;
+		}
 
 		adjacencies[get_index(edge.first, edge.second, order)] = 1;
 		adjacencies[get_index(edge.second, edge.first, order)] = 1;
@@ -882,7 +910,10 @@ bool Graph::read_next_g6_format(std::ifstream * file) {
 
 	unsigned n = (unsigned)g6_string.front();
 	if (n == 126)
-		throw "tooManyVertices";
+	{
+		FAIL("Reading g6 graph", "Graph has too many vertices.");
+		return false;
+	}
 
 	std::vector<unsigned> bit_adjacencies;
 	for (unsigned i = 1; i < g6_string.length(); i++)
@@ -939,7 +970,7 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 	unsigned ord = 0;
 	size = 0;
 
-	int i;
+	unsigned i;
 	for (i = 0; i < line.length() && line.at(i) != ' '; i++)
 	{
 		ord *= 10;
@@ -947,7 +978,11 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 	}
 
 	if (i < line.length() && line.at(i) != ' ')
-		throw "parseError";
+	{
+		PARSE_ERROR("Expected ' ', got '" << line.at(i) << "' instead.");
+		FAIL("Reading graph from list", "");
+		return false;
+	}
 	i++;
 
 	while (i < line.length())
@@ -956,7 +991,11 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 		unsigned second_vertex = 0;
 
 		if (line.at(i) != '{')
-			throw "parseError";
+		{
+			PARSE_ERROR("Expected '{', got '" << line.at(i) << "' instead.");
+			FAIL("Reading graph from list", "");
+			return false;
+		}
 		i++;
 
 		while (i < line.length() && line.at(i) != ',')
@@ -967,7 +1006,11 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 		}
 
 		if (i >= line.length() || line.at(i) != ',')
-			throw "parseError";
+		{
+			PARSE_ERROR("Expected ','.");
+			FAIL("Reading graph from list", "");
+			return false;
+		}
 		i++;
 
 		while (i < line.length() && line.at(i) != '}')
@@ -978,10 +1021,18 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 		}
 
 		if (i >= line.length() || line.at(i) != '}')
-			throw "parseError";
+		{
+			PARSE_ERROR("Expected '}'.");
+			FAIL("Reading graph from list", "");
+			return false;
+		}
 		i++;
 		if (i < line.length() && line.at(i) != ',')
-			throw "parseError";
+		{
+			PARSE_ERROR("Expected ',', got '" << line.at(i) << "' instead.");
+			FAIL("Reading graph from list", "");
+			return false;
+		}
 		i++;
 
 		edges.push_back(std::pair<unsigned, unsigned>(first_vertex, second_vertex));
@@ -1209,7 +1260,7 @@ bool Graph::is_closed() {
 
 /**
  * expects the graph to be closed
- * returns an labeling with regards to which the graph is closed
+ * returns a labeling with regards to which the graph is closed
 **/
 std::pair<unsigned *, unsigned *> Graph::gen_closed_labeling_pair() {
 	if (order < 1)

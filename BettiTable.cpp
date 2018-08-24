@@ -54,7 +54,11 @@ bool BettiTable::read_next_table(std::ifstream* file) {
 				{
 					if (line.at(i) < '0'
 						|| line.at(i) > '9')
-						throw "parseError";
+					{
+						PARSE_ERROR("'" << line.at(i) << "' is not a number.");
+						FAIL("Adding Betti data", "");
+						return false;
+					}
 
 					betti_number *= 10;
 					betti_number += line.at(i) - '0';
@@ -73,7 +77,11 @@ bool BettiTable::read_next_table(std::ifstream* file) {
 		if (columns == 0)
 			columns = current_columns;
 		else if (current_columns != columns)
-			throw "parseError";
+		{
+			PARSE_ERROR("The number of columns is not consistent.");
+			FAIL("Adding Betti data", "");
+			return false;
+		}
 	}
 
 	return true;
@@ -95,7 +103,11 @@ void BettiTable::read_from_line(std::string * line) {
 	for (unsigned i = 0; i < line->length(); i += 2)
 	{
 		if (line->at(i) != '{')
-			throw "parseError";
+		{
+			PARSE_ERROR("Expected '{', got '" << line->at(i) << "' instead.");
+			FAIL("Reading Betti table", "");
+			return;
+		}
 
 		while (i < line->length()
 			&& line->at(i) != '}')
@@ -110,7 +122,11 @@ void BettiTable::read_from_line(std::string * line) {
 			{
 				if (line->at(i) < '0'
 					|| line->at(i) > '9')
-					throw "parseError";
+				{
+					PARSE_ERROR("'" << line->at(i) << "' is not a number.");
+					FAIL("Reading Betti table", "");
+					return;
+				}
 
 				betti_number *= 10;
 				betti_number += line->at(i) - '0';
@@ -121,7 +137,11 @@ void BettiTable::read_from_line(std::string * line) {
 		}
 
 		if (i == line->length())
-			throw "parseError";
+		{
+			PARSE_ERROR("Line incomplete.");
+			FAIL("Reading Betti table", "");
+			return;
+		}
 
 		rows++;
 	}

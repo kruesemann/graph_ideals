@@ -20,22 +20,6 @@ inline unsigned str_to_unsigned(std::string * str) {
 
 
 /**
-* returns x to the power of n
-**/
-inline unsigned nth_power(unsigned x, unsigned n) {
-	if (x == 0)
-		return 0;
-
-	unsigned power = 1;
-
-	for (unsigned i = 0; i < n; i++)
-		power *= x;
-
-	return power;
-}
-
-
-/**
  * returns the appropriate coordinates for vertex to print the graph of given order on a circle
 **/
 std::pair<int, int> get_coordinate(unsigned vertex, unsigned order) {
@@ -269,7 +253,7 @@ void DatabaseInterface::save_view_visualisation(std::ofstream * file) {
 				graphID_index = i;
 			else
 			{
-				std::cout << "Saving view failed. Visualisation does not support multiple graphs per row." << std::endl;
+				FAIL("Saving view", "Visualisation does not support multiple graphs per row.");
 				return;
 			}
 		}
@@ -279,7 +263,7 @@ void DatabaseInterface::save_view_visualisation(std::ofstream * file) {
 				graphOrder_index = i;
 			else
 			{
-				std::cout << "Saving view failed. Visualisation does not support multiple graphs per row." << std::endl;
+				FAIL("Saving view", "Visualisation does not support multiple graphs per row.");
 				return;
 			}
 		}
@@ -289,7 +273,7 @@ void DatabaseInterface::save_view_visualisation(std::ofstream * file) {
 				edges_index = i;
 			else
 			{
-				std::cout << "Saving view failed. Visualisation does not support multiple graphs per row." << std::endl;
+				FAIL("Saving view", "Visualisation does not support multiple graphs per row.");
 				return;
 			}
 		}
@@ -298,7 +282,7 @@ void DatabaseInterface::save_view_visualisation(std::ofstream * file) {
 	if (graphOrder_index == -1
 		|| edges_index == -1)
 	{
-		std::cout << "Saving view failed. View does not include both graphOrder and edges. These are necessary to visualize the graphs." << std::endl;
+		FAIL("Saving view", "View does not include both graphOrder and edges. These are necessary to visualize the graphs.");
 		return;
 	}
 
@@ -372,7 +356,7 @@ void DatabaseInterface::save_view_g6(std::ofstream * file) {
 	if (graphOrder_index == -1
 		|| edges_index == -1)
 	{
-		std::cout << "Saving view failed. View does not include both graphOrder and edges. These are necessary to visualize the graphs." << std::endl;
+		FAIL("Saving view", "View does not include both graphOrder and edges. These are necessary to visualize the graphs.");
 		return;
 	}
 
@@ -396,7 +380,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 	{
 		if (sqlite3_prepare_v2(database, ("SELECT graphOrder,edges FROM Graphs WHERE " + std::string(query_condition)).c_str(), -1, &qry, 0) != SQLITE_OK)
 		{
-			std::cout << "Generating M2 scripts failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
+			FAIL("Generating M2 scripts", "SQL error: '" << qry << "' is an invalid query.");
 			sqlite3_finalize(qry);
 			return;
 		}
@@ -405,7 +389,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 	{
 		if (sqlite3_prepare_v2(database, "SELECT graphOrder,edges FROM Graphs", -1, &qry, 0) != SQLITE_OK)
 		{
-			std::cout << "Generating M2 scripts failed. SQL error: '" << qry << "' is an invalid query." << std::endl;
+			FAIL("Generating M2 scripts", "SQL error: '" << qry << "' is an invalid query.");
 			sqlite3_finalize(qry);
 			return;
 		}
@@ -415,7 +399,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 
 	if (!templ.is_open())
 	{
-		std::cout << "Generating M2 scripts failed. Unable to open '" << (filename ? filename : "template.m2") << "'." << std::endl;
+		FAIL("Generating M2 scripts", "Unable to open '" << (filename ? filename : "template.m2") << "'.");
 		sqlite3_finalize(qry);
 		return;
 	}
@@ -460,7 +444,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 
 		if (!kFile.is_open())
 		{
-			std::cout << "Generating M2 scripts failed. Unable to write to file '" << *idealname << "_" << std::to_string(k) << ".m2'." << std::endl;
+			FAIL("Generating M2 scripts", "Unable to write to file '" << *idealname << "_" << std::to_string(k) << ".m2'.");
 			sqlite3_finalize(qry);
 			return;
 		}
@@ -470,11 +454,12 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 		kFile.close();
 		
 		if (empty_edge_indices.empty())
-			std::cout << "      generated '" << *idealname << "_" << std::to_string(k) << ".m2'\n";
+			PROGRESS(2, "generated '" << *idealname << "_" << std::to_string(k) << ".m2'");
 		else
 		{
 			empty_edge_indices.pop_back();
-			std::cout << "      generated '" << *idealname << "_" << std::to_string(k) << ".m2'\n         Note, that graph(s) " << empty_edge_indices << " in this file have no edges.\n         Taking the monomial ideal in this case might not work!\n";
+			PROGRESS(2, "generated '" << *idealname << "_" << std::to_string(k) << ".m2'");
+			WARNING("Note, that graph(s) " << empty_edge_indices << " in this file have no edges. Taking the monomial ideal in this case might not work!");
 		}
 
 		if (i < batch_size)
@@ -485,7 +470,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 
 	if (k == 0 && i == 0)
 	{
-		std::cout << "Generating M2 scripts failed. Unable to find any graphs satisfying the condition of the query: '" << qry << "'." << std::endl;
+		FAIL("Generating M2 scripts", "Unable to find any graphs satisfying the condition of the query: '" << qry << "'.");
 		return;
 	}
 
@@ -515,138 +500,6 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 
 
 /**
- * outputs the status table to the terminal
-**/
-void DatabaseInterface::show_status() {
-	sqlite3_stmt * stmt;
-	if (sqlite3_prepare_v2(database, "SELECT name,specification,type,checked,help_text FROM Status;", -1, &stmt, 0) != SQLITE_OK)
-	{
-		std::cout << "Showing status failed. SQL error: Could not find status table." << std::endl;
-		sqlite3_finalize(stmt);
-		return;
-	}
-
-	unsigned colc = sqlite3_column_count(stmt);
-	std::vector<std::string> columns;
-	std::vector<unsigned> widths;
-
-	for (unsigned i = 0; i < colc; i++)
-	{
-		std::string column = sqlite3_column_name(stmt, i);
-		columns.push_back(column);
-		widths.push_back(column.length() + 3 < max_column_width ? column.length() + 3 : max_column_width + 3);
-	}
-
-	std::vector<std::vector<std::string>> contents;
-	unsigned rowc = 0;
-
-	while (sqlite3_step(stmt) == SQLITE_ROW)
-	{
-		std::vector<std::string> row;
-		for (unsigned i = 0; i < colc; i++)
-		{
-			std::string content;
-			if (i == 3)
-			{
-				int status = sqlite3_column_int(stmt, i) ? sqlite3_column_int(stmt, i) : -1;
-				if (status == -1)
-					content = "-";
-				else
-				{
-					content = "";
-					unsigned power = 1;
-					for (unsigned n = 1; status != 0; n++)
-					{
-						if ((status % (2 * power)) / power == 1)
-						{
-							content += std::to_string(n) + ",";
-							status -= power;
-						}
-						power *= 2;
-					}
-					
-					if (!content.empty())
-						content.pop_back();
-					else
-						content = "-";
-				}
-			}
-			else
-				content = (char *)sqlite3_column_text(stmt, i) ? (char *)sqlite3_column_text(stmt, i) : "-";
-
-			row.push_back(content);
-
-			if (widths[i] < content.length() + 3)
-				widths[i] = content.length() < max_column_width ? content.length() + 3 : max_column_width + 3;
-		}
-		contents.push_back(row);
-		rowc++;
-	}
-
-	sqlite3_finalize(stmt);
-
-	unsigned last_whitespace = 0;
-	for (unsigned j = 0; j < colc; j++)
-	{
-		std::cout << std::string(last_whitespace, ' ') << columns[j];
-		last_whitespace = widths[j] - columns[j].length();
-	}
-	std::cout << "\n";
-
-	for (unsigned i = 0; i < rowc; i++)
-	{
-		std::vector<std::string> overflow;
-		bool wrap = false;
-		last_whitespace = 0;
-
-		for (unsigned j = 0; j < colc; j++)
-		{
-			std::string content = contents[i][j];
-			if (content.length() <= max_column_width)
-			{
-				std::cout << std::string(last_whitespace, ' ') << content;
-				last_whitespace = widths[j] - content.length();
-				overflow.push_back("");
-			}
-			else
-			{
-				std::cout << std::string(last_whitespace, ' ') << content.substr(0, max_column_width);
-				last_whitespace = 3;
-				overflow.push_back(content.substr(max_column_width, std::string::npos));
-				wrap = true;
-			}
-		}
-		std::cout << "\n";
-
-		while (wrap)
-		{
-			wrap = false;
-			last_whitespace = 0;
-
-			for (unsigned j = 0; j < colc; j++)
-			{
-				std::string content = overflow[j];
-				if (content.length() <= max_column_width)
-				{
-					std::cout << std::string(last_whitespace, ' ') << content;
-					last_whitespace = widths[j] - content.length();
-					overflow[j] = "";
-				}
-				else
-				{
-					std::cout << std::string(last_whitespace, ' ') << content.substr(0, max_column_width);
-					last_whitespace = 3;
-					overflow[j] = content.substr(max_column_width, std::string::npos);
-					wrap = true;
-				}
-			}
-			std::cout << "\n";
-		}
-	}
-}
-
-
-/**
 * outputs the status table to the terminal
 **/
 void DatabaseInterface::show_scripts() {
@@ -654,7 +507,7 @@ void DatabaseInterface::show_scripts() {
 
 	if (sqlite3_prepare_v2(database, "SELECT * FROM Scripts", -1, &stmt, 0) != SQLITE_OK)
 	{
-		std::cout << "SQL error: invalid query." << std::endl;
+		SQL_ERROR("SELECT * FROM Scripts");
 		sqlite3_finalize(stmt);
 		return;
 	}
@@ -691,6 +544,8 @@ void DatabaseInterface::show_scripts() {
 	}
 
 	sqlite3_finalize(stmt);
+
+	std::cout << "\n";
 
 	unsigned last_whitespace = 0;
 	for (unsigned j = 0; j < colc; j++)
@@ -731,7 +586,7 @@ bool DatabaseInterface::execute_SQL_query(std::string * query) {
 	{
 		if (sqlite3_prepare_v2(database, query->c_str(), -1, &stmt, 0) != SQLITE_OK)
 		{
-			std::cout << "SQL error: invalid query." << std::endl;
+			SQL_ERROR(query);
 			sqlite3_finalize(stmt);
 			return false;
 		}
@@ -770,7 +625,7 @@ bool DatabaseInterface::execute_SQL_query(std::string * query) {
 	{
 		sqlite3_finalize(stmt);
 		reset_view();
-		std::cout << "SQL query failed. " << error << ". View reset." << std::endl;
+		FAIL("SQL query", error << ". Resetting view.");
 		return false;
 	}
 
@@ -785,51 +640,11 @@ bool DatabaseInterface::execute_SQL_statement(std::string * statement) {
 	char * errMsg = 0;
 
 	if (sqlite3_exec(database, statement->c_str(), 0, 0, &errMsg) != SQLITE_OK) {
-		std::cout << "SQL error: " << errMsg << "." << std::endl;
+		SQL_ERROR(statement);
+		RESULT(errMsg);
 		sqlite3_free(errMsg);
 		return false;
 	}
-
-	return true;
-}
-
-
-/**
- * creates the status table in database for ckecking the build status
-**/
-bool DatabaseInterface::create_status_table() {
-	std::string statement = "CREATE TABLE Status(" \
-		"columnID INTEGER PRIMARY KEY," \
-		"name TEXT NOT NULL," \
-		"specification TEXT," \
-		"type TEXT NOT NULL,"
-		"checked INT," \
-		"help_text TEXT" \
-		");";
-
-	if (sqlite3_exec(database, statement.c_str(), 0, 0, 0) != SQLITE_OK)
-		return false;
-
-	statement = "INSERT INTO Status(name,specification,type,checked,help_text) VALUES" \
-		"('graphID',NULL,'INT',NULL,'unique graph number in sequence of insertion')," \
-		"('graphOrder',NULL,'INT',NULL,'number of vertices')," \
-		"('graphSize',NULL,'INT',NULL,'number of edges')," \
-		"('edges',NULL,'TEXT',NULL,'list of edges')," \
-		"('cliqueNumber',NULL,'INT',NULL,'cardinality of the largest clique')," \
-		"('maxCliqueNumber',NULL,'INT',NULL,'number of inclusion-maximal cliques')," \
-		"('type','connected','TEXT',0,'a graph for which there is a path between every pair of vertices')," \
-		"('type','cograph','TEXT',0,'a graph which does not contain a path of length 3')," \
-		"('type','euler','TEXT',0,'a graph for which all vertices are of even degree')," \
-		"('type','chordal','TEXT',0,'a graph for which exists a perfect elimination ordering')," \
-		"('type','claw-free','TEXT',0,'a graph which does not contain a claw, i.e. a complete 1-3-bipartite induced subgraph')," \
-		"('type','closed','TEXT',0,'a graph for which exists an ordering with the following property: {a,b}, {i,j} in E(G) where a<b, i<j  =>  {b,j} in E(G) if a=i and {a,i} in E(G) if b=j')," \
-		"('[ideal]Bettis',NULL,'TEXT',NULL,'Betti table of the free resolution of the factor ring of [ideal]')," \
-		"('[ideal]PD',NULL,'INT',NULL,'projective dimension of the factor ring of [ideal]')," \
-		"('[ideal]Reg',NULL,'INT',NULL,'Castelnuovo-Mumford regularity of the free resolution')," \
-		"('[ideal]Schenzel',NULL,'INT',NULL,'column number (starting with 1) of the rightmost non-zero entry of the second row of the Betti table; 1 if there is no second row')," \
-		"('[ideal]Extremals',NULL,'TEXT',NULL,'extremal Betti numbers of the Betti table');";
-	if (!execute_SQL_statement(&statement))
-		return false;
 
 	return true;
 }
@@ -903,7 +718,7 @@ void DatabaseInterface::insert_graphs(std::ifstream * file, FORMAT format) {
 
 		execute_SQL_statement(&statement);
 
-		std::cout << "   " << i << " graphs inserted\n";
+		PROGRESS(2, i << " graphs inserted");
 
 		if (i < 10000)
 			break;
@@ -925,7 +740,8 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 
 	if (sqlite3_prepare_v2(database, query.c_str(), -1, &qry, 0) != SQLITE_OK)
 	{
-		std::cout << "Update failed. SQL error: '" << query << "' is an invalid query." << std::endl;
+		SQL_ERROR(query);
+		FAIL("Labeling type", "");
 		sqlite3_finalize(qry);
 		return false;
 	}
@@ -934,7 +750,8 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 
 	if (sqlite3_prepare_v2(database, "UPDATE Graphs SET type = ? WHERE graphID == ?", -1, &stmt, 0) != SQLITE_OK)
 	{
-		std::cout << "Update failed. SQL error: '" << stmt << "' is an invalid statement." << std::endl;
+		SQL_ERROR("UPDATE Graphs SET type = ? WHERE graphID == ?");
+		FAIL("Labeling type", "");
 		sqlite3_finalize(qry);
 		sqlite3_finalize(stmt);
 		return false;
@@ -960,7 +777,7 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 
 		if (i == 10000)
 		{
-			std::cout << "      " << i << " graphs tested\n";
+			PROGRESS(2, i << " graphs tested");
 			i = 1;
 		}
 	}
@@ -970,10 +787,10 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 	sqlite3_finalize(stmt);
 
 	if (i > 1)
-		std::cout << "      " << i - 1 << " graphs tested\n";
+		PROGRESS(2, i - 1 << " graphs tested");
 	else
 	{
-		std::cout << "   Unable to find any graphs satisfying the condition of the query: " << query << "." << std::endl;
+		FAIL("Labeling type", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
 		return false;
 	}
 
@@ -988,14 +805,15 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 	sqlite3_stmt * qry1;
 	if (sqlite3_prepare_v2(database, ("SELECT idealname,condition FROM Scripts WHERE scriptID == " + std::to_string(scriptID)).c_str(), -1, &qry1, 0) != SQLITE_OK)
 	{
-		std::cout << "Adding Betti data failed. SQL error: '" << qry1 << "' is an invalid query." << std::endl;
+		SQL_ERROR("SELECT idealname,condition FROM Scripts WHERE scriptID == " << scriptID);
+		FAIL("Adding Betti data", "");
 		sqlite3_finalize(qry1);
 		return false;
 	}
 
 	if (sqlite3_step(qry1) != SQLITE_ROW)
 	{
-		std::cout << "Adding Betti data failed. There is no open script with scriptID " << scriptID << " in the Scripts table." << std::endl;
+		FAIL("Adding Betti data", "There is no open script with scriptID " << scriptID << " in the Scripts table.");
 		sqlite3_finalize(qry1);
 		return false;
 	}
@@ -1027,7 +845,8 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 	{
 		if (sqlite3_prepare_v2(database, "SELECT graphID FROM Graphs", -1, &qry2, 0) != SQLITE_OK)
 		{
-			std::cout << "Adding Betti data failed. SQL error: '" << qry2 << "' is an invalid query." << std::endl;
+			SQL_ERROR("SELECT graphID FROM Graphs");
+			FAIL("Adding Betti data", "");
 			sqlite3_finalize(qry2);
 			return false;
 		}
@@ -1036,7 +855,8 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 	{
 		if (sqlite3_prepare_v2(database, ("SELECT graphID FROM Graphs WHERE " + std::string(query_condition)).c_str(), -1, &qry2, 0) != SQLITE_OK)
 		{
-			std::cout << "Adding Betti data failed. SQL error: '" << qry2 << "' is an invalid query." << std::endl;
+			SQL_ERROR("SELECT graphID FROM Graphs" << query_condition);
+			FAIL("Adding Betti data", "");
 			sqlite3_finalize(qry2);
 			return false;
 		}
@@ -1048,7 +868,8 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 
 	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt1, 0) != SQLITE_OK)
 	{
-		std::cout << "Adding Betti data failed. SQL error: '" << stmt1 << "' is an invalid statement." << std::endl;
+		SQL_ERROR(statement);
+		FAIL("Adding Betti data", "");
 		sqlite3_finalize(qry2);
 		sqlite3_finalize(stmt1);
 		return false;
@@ -1064,7 +885,7 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 		{
 			if (k == 0)
 			{
-				std::cout << "Adding Betti data failed. Unable to open 'betti_" << ideal << "_0.bt'." << std::endl;
+				FAIL("Adding Betti data", "Unable to open 'betti_" << ideal << "_0.bt'.");
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 				sqlite3_finalize(qry2);
 				sqlite3_finalize(stmt1);
@@ -1079,7 +900,7 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 		{
 			if (sqlite3_step(qry2) != SQLITE_ROW)
 			{
-				std::cout << "Adding Betti data failed. There are more tables in the files than graphs of order satisfying condition '" << query_condition << "' in the database." << std::endl;
+				FAIL("Adding Betti data", "There are more tables in the files than graphs of order satisfying condition '" << query_condition << "' in the database.");
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 				sqlite3_finalize(qry2);
 				sqlite3_finalize(stmt1);
@@ -1102,13 +923,13 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 
 			if (count == 10000)
 			{
-				std::cout << "      " << count << " graphs updated.\n";
+				PROGRESS(2, count << " graphs updated");
 				count = 0;
 			}
 		}
 	}
 	if (count != 0)
-		std::cout << "      " << count << " graphs updated.\n";
+		PROGRESS(2, count << " graphs updated");
 	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 
 	sqlite3_finalize(qry2);
@@ -1117,79 +938,4 @@ bool DatabaseInterface::add_betti_data(unsigned scriptID) {
 	execute_SQL_statement(&("DELETE FROM Scripts WHERE scriptID == " + std::to_string(scriptID)));
 
 	return true;
-}
-
-
-/**
- * checks the status table to determine if name graphs are already checked and labeled
-**/
-bool DatabaseInterface::checked(const char * specification, unsigned order) {
-	if (order < 1)
-	{
-		std::cout << "Checking status failed. " << order << " is not a valid graph order." << std::endl;
-		return true;
-	}
-
-	std::string query = "SELECT checked FROM Status WHERE specification == '" + std::string(specification) + "';";
-
-	sqlite3_stmt * stmt;
-
-	if (sqlite3_prepare_v2(database, query.c_str(), -1, &stmt, 0) != SQLITE_OK)
-	{
-		std::cout << "Checking status failed. SQL error: invalid query." << std::endl;
-		sqlite3_finalize(stmt);
-		return false;
-	}
-
-	if (sqlite3_step(stmt) == SQLITE_ROW)
-	{
-		unsigned status = sqlite3_column_int(stmt, 0);
-		unsigned power_of_2 = nth_power(2, order - 1);
-		status %= 2 * power_of_2;
-		status /= power_of_2;
-
-		if (status == 1)
-		{
-			sqlite3_finalize(stmt);
-			return true;
-		}
-	}
-	else
-		std::cout << "Checking status failed. Database error: " << specification << " does not occur in status table." << std::endl;
-
-	sqlite3_finalize(stmt);
-	return false;
-}
-
-
-/**
- * updates the status to indicate graphs of given order have been tested with regards to given specification
-**/
-void DatabaseInterface::update_status(const char * specification, unsigned order) {
-	if (order < 1)
-	{
-		std::cout << "Updating status failed. " << order << " is not a valid graph order." << std::endl;
-		return;
-	}
-
-	std::string query = "SELECT checked FROM Status WHERE specification == '" + std::string(specification) + "';";
-
-	sqlite3_stmt * qry;
-
-	if (sqlite3_prepare_v2(database, query.c_str(), -1, &qry, 0) != SQLITE_OK)
-	{
-		std::cout << "Updating status failed. SQL error: invalid query." << std::endl;
-		sqlite3_finalize(qry);
-		return;
-	}
-
-	if (sqlite3_step(qry) == SQLITE_ROW)
-	{
-		std::string statement = "UPDATE Status SET checked = " + std::to_string(sqlite3_column_int(qry, 0) + nth_power(2, order - 1)) + " WHERE specification == '" + specification + "';";
-		execute_SQL_statement(&statement);
-	}
-	else
-		std::cout << "Updating status failed. Database error: " << specification << " does not occur in status table." << std::endl;
-
-	sqlite3_finalize(qry);
 }

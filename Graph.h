@@ -68,6 +68,16 @@ public:
 		read_graph_from_vector(order, edges);
 	}
 
+	Graph& operator=(Graph && graph) {
+		order = graph.order;
+		graph.order = 0;
+		adjacencies = graph.adjacencies;
+		graph.adjacencies = 0;
+		size = graph.size;
+		graph.size = 0;
+		return *this;
+	}
+
 	~Graph() {
 		delete[] adjacencies;
 		adjacencies = 0;
