@@ -435,10 +435,11 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 				empty_edge_indices += std::to_string(i) + ",";
 		}
 
-		
+
+
 		script.pop_back();
 		script.pop_back();
-		script += "\n}\n\n" + buffer.str();
+		script += "\n}\n\nfilename=\"betti_" + *idealname + "_" + std::to_string(k) + ".bt\"\nN=" + std::to_string(i-1) + "\n\n" + buffer.str();
 
 		std::ofstream kFile(*idealname + "_" + std::to_string(k) + ".m2", std::ios::trunc);
 
@@ -459,7 +460,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 		{
 			empty_edge_indices.pop_back();
 			PROGRESS(2, "generated '" << *idealname << "_" << std::to_string(k) << ".m2'");
-			WARNING("Note, that graph(s) " << empty_edge_indices << " in this file have no edges. Taking the monomial ideal in this case might not work!");
+			WARNING("Note, that there are no edges in graph(s) " << empty_edge_indices << " in this file. Taking the monomial ideal in this case might not work!");
 		}
 
 		if (i < batch_size)
@@ -586,7 +587,7 @@ bool DatabaseInterface::execute_SQL_query(std::string * query) {
 	{
 		if (sqlite3_prepare_v2(database, query->c_str(), -1, &stmt, 0) != SQLITE_OK)
 		{
-			SQL_ERROR(query);
+			SQL_ERROR(*query);
 			sqlite3_finalize(stmt);
 			return false;
 		}
@@ -640,7 +641,7 @@ bool DatabaseInterface::execute_SQL_statement(std::string * statement) {
 	char * errMsg = 0;
 
 	if (sqlite3_exec(database, statement->c_str(), 0, 0, &errMsg) != SQLITE_OK) {
-		SQL_ERROR(statement);
+		SQL_ERROR(*statement);
 		RESULT(errMsg);
 		sqlite3_free(errMsg);
 		return false;
