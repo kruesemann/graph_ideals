@@ -98,7 +98,7 @@ public:
 	bool read_next_g6_format(std::ifstream * file);
 	bool read_next_list_format(std::ifstream * file);
 
-	std::pair<unsigned, unsigned> get_clique_numbers();
+	std::vector<unsigned> get_clique_numbers();
 
 	bool is_connected();
 	bool is_cograph();

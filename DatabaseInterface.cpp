@@ -680,8 +680,6 @@ bool DatabaseInterface::create_graphs_table() {
 							"graphOrder INT NOT NULL," \
 							"graphSize INT NOT NULL," \
 							"edges TEXT NOT NULL," \
-							"cliqueNumber INT," \
-							"maxCliqueNumber INT," \
 							"type TEXT" \
 							");";
 
@@ -707,13 +705,10 @@ void DatabaseInterface::insert_graphs(std::ifstream * file, FORMAT format) {
 	{
 		unsigned i;
 		Graph g;
-		std::string statement = "INSERT INTO Graphs (graphOrder,graphSize,edges,cliqueNumber,maxCliqueNumber) VALUES ";
+		std::string statement = "INSERT INTO Graphs (graphOrder,graphSize,edges) VALUES ";
 
 		for (i = 0; i < 10000 && (g.*read_function)(file); i++)
-		{
-			std::pair<unsigned, unsigned> clique_numbers = g.get_clique_numbers();
-			statement += "(" + std::to_string(g.get_order()) + "," + std::to_string(g.get_size()) + ",'" + g.convert_to_string() + "'," + std::to_string(clique_numbers.first) + "," + std::to_string(clique_numbers.second) + "),";//TEST
-		}
+			statement += "(" + std::to_string(g.get_order()) + "," + std::to_string(g.get_size()) + ",'" + g.convert_to_string() + "'),";
 
 		statement.pop_back();
 
@@ -733,9 +728,9 @@ void DatabaseInterface::insert_graphs(std::ifstream * file, FORMAT format) {
  * updates the type of all graphs that satisfy graph_test and query_condition
 **/
 bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * type, const char * query_condition) {
-	std::string query = "SELECT graphID,graphorder,edges,type FROM Graphs WHERE (type IS NULL OR type NOT LIKE '%" + std::string(type) + "%')";
+	std::string query = "SELECT graphID,graphOrder,edges,type FROM Graphs WHERE (type IS NULL OR type NOT LIKE '%" + std::string(type) + "%')";
 	if (query_condition)
-		query += " AND " + std::string(query_condition);
+		query += " AND (" + std::string(query_condition) + ")";
 
 	sqlite3_stmt * qry;
 
@@ -792,6 +787,101 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 	else
 	{
 		FAIL("Labeling type", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
+		return false;
+	}
+
+	return true;
+}
+
+
+bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbers)(), std::vector<const char *> * columns, const char * query_condition) {
+	if (columns->size() == 0)
+	{
+		FAIL("Computing numbers", "No numbers specified.");
+		return false;
+	}
+
+	std::string query = "SELECT graphID,graphOrder,edges FROM Graphs WHERE (" + std::string(columns->at(0)) + " IS NULL";
+	for (unsigned i = 1; i < columns->size(); i++)
+		query += " AND " + std::string(columns->at(i)) + " IS NULL";
+	query += ")";
+
+	if (query_condition)
+		query += " AND (" + std::string(query_condition) + ")";
+
+	sqlite3_stmt * qry;
+
+	if (sqlite3_prepare_v2(database, query.c_str(), -1, &qry, 0) != SQLITE_OK)
+	{
+		SQL_ERROR(query);
+		FAIL("Computing numbers", "");
+		sqlite3_finalize(qry);
+		return false;
+	}
+
+	std::string statement = "UPDATE Graphs SET " + std::string(columns->at(0)) + " = ?";
+	for (unsigned i = 1; i < columns->size(); i++)
+		statement += ", " + std::string(columns->at(i)) + " = ?";
+	statement += " WHERE graphID == ?";
+
+	sqlite3_stmt * stmt;
+
+	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt, 0) != SQLITE_OK)
+	{
+		SQL_ERROR(statement);
+		FAIL("Computing numbers", "");
+		sqlite3_finalize(qry);
+		sqlite3_finalize(stmt);
+		return false;
+	}
+
+	for (unsigned i = 0; i < columns->size(); i++)
+		sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + columns->at(i) + " INT;").c_str(), 0, 0, 0);
+
+	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
+	unsigned i;
+	for (i = 1; sqlite3_step(qry) == SQLITE_ROW; i++)
+	{
+		std::string edges = ((char *)sqlite3_column_text(qry, 2));
+		Graph g(sqlite3_column_int(qry, 1), &edges);
+
+		std::vector<unsigned> numbers = (g.*graph_numbers)();
+
+		if (numbers.size() != columns->size())
+		{
+			FAIL("Computing numbers", "There are not the same amounts of numbers and columns.");
+			sqlite3_exec(database, "COMMIT;", 0, 0, 0);
+			sqlite3_finalize(qry);
+			sqlite3_finalize(stmt);
+			return false;
+		}
+
+		for (unsigned j = 0; j < numbers.size(); j++)
+			sqlite3_bind_int(stmt, j + 1, numbers[j]);
+
+		sqlite3_bind_int(stmt, numbers.size() + 1, sqlite3_column_int(qry, 0));
+
+		sqlite3_step(stmt);
+
+		sqlite3_clear_bindings(stmt);
+		sqlite3_reset(stmt);
+
+		if (i == 10000)
+		{
+			PROGRESS(2, i << " graphs updated");
+			i = 1;
+		}
+	}
+	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
+
+	sqlite3_finalize(qry);
+	sqlite3_finalize(stmt);
+
+	if (i > 1)
+		PROGRESS(2, i - 1 << " graphs updated");
+	else
+	{
+		FAIL("Computing numbers", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
 		return false;
 	}
 

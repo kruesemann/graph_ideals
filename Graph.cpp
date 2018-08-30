@@ -1048,7 +1048,7 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 /**
 * returns the clique number and the number of inclusion-maximal cliques
 **/
-std::pair<unsigned, unsigned> Graph::get_clique_numbers() {
+std::vector<unsigned> Graph::get_clique_numbers() {
 	std::vector<std::vector<unsigned>> max_cliques;
 	std::vector<unsigned> include_all;
 	std::vector<unsigned> include_some;
@@ -1058,7 +1058,7 @@ std::pair<unsigned, unsigned> Graph::get_clique_numbers() {
 
 	unsigned clique_number = bron_kerbosch_pivot(&max_cliques, 0, &include_all, &include_some, &include_none);
 
-	return std::pair<unsigned, unsigned>(clique_number, max_cliques.size());
+	return { clique_number, max_cliques.size() };
 }
 
 

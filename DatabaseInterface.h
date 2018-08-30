@@ -66,6 +66,7 @@ public:
 	void insert_graphs(std::ifstream * file, FORMAT format);
 
 	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
+	bool update_numbers(std::vector<unsigned>(Graph::*graph_numbers)(), std::vector<const char *> * columns, const char * query_condition);
 
 	bool add_betti_data(unsigned scriptID);
 };

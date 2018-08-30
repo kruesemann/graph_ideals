@@ -23,6 +23,7 @@
 					"--Valid 'keyword' arguments:\n" \
 					"     sql     : shows a sample of useful SQL queries instead\n" \
 					"     insert  : shows a description of the 'insert' functionality\n" \
+					"     numbers : shows a description of the 'numbers' functionality\n" \
 					"     label   : shows a description of the 'label' functionality\n" \
 					"     scripts : shows a description of the 'scripts' functionality\n" \
 					"     betti   : shows a description of the 'betti' functionality\n" \
@@ -43,7 +44,10 @@
 					"SELECT t1.beiReg as coneRegularity, t2.beiReg AS oldRegularity\n" \
 					"  FROM Graphs t1 INNER JOIN Graphs t2\n" \
 					"  ON t2.nGraphID = t1.coneOver\n" \
-					"  WHERE t1.beiReg <> t2.beiReg;\n"
+					"  WHERE t1.beiReg <> t2.beiReg;\n" \
+					"\n" \
+					"UPDATE Graphs SET type = NULL, cliqueNumber = -1 WHERE graphID <> 1;\n" \
+					"DELETE FROM Graphs WHERE NOT type IS NULL;\n"
 
 
 #define insert_text	"Enter 'insert -[format] [file name]' to insert all graphs from the file with the specified path (they are expected to be in the specified format).\n" \
@@ -58,6 +62,18 @@
 					"             Example : '3 {1,2},{2,3}'.\n" \
 					"\n" \
 					"--The 'file name' must specify a relative path to a correctly formatted text file. It can be entered with or without quotation marks '\"'.\n"
+
+
+#define numbers_text	"Enter 'numbers (-allexcept) -[numbers1] -[numbers2] ... (-where \"[condition]\")' to compute all specified numbers of the graphs in the database.\n" \
+						"\n" \
+						"--Example: numbers -clique -where \"graphOrder == 4\"\n" \
+						"\n" \
+						"--The argument '-allexcept' is used to compute all numbers except the ones specified. It can be used to compute all numbers.\n" \
+						"\n" \
+						"--Valid number arguments:\n" \
+						"     -clique : Computes the clique number and the number of maximal cliques of each graph.\n" \
+						"\n" \
+						"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be updated.\n"
 
 
 #define label_text	"Enter 'label (-allexcept) -[type1] -[type2] ... (-where \"[condition]\")' to label all graphs of the specified types in the database as such.\n" \
@@ -118,8 +134,14 @@
 					"--The argument '-g6' stands for the 'Graph6' format, an efficient format for storing undirected graphs.\n"
 
 
+typedef std::vector<unsigned> (Graph::*Graph_numbers) ();
 typedef bool (Graph::*Graph_test) ();
 typedef unsigned* (Graph::*Gen_labeling) ();
+
+#define NUMBER_NUMBERVECTORS 1
+const char* NUMBERVECTORS[NUMBER_NUMBERVECTORS] = { "clique" };
+std::vector<const char*> COLUMNVECTORS[NUMBER_NUMBERVECTORS] = { { "cliqueNumber", "maxCliqueNumber" } };
+Graph_numbers GETTERS[NUMBER_NUMBERVECTORS] = { &Graph::get_clique_numbers };
 
 #define NUMBER_TYPES 6
 const char* TYPES[NUMBER_TYPES] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed" };
@@ -169,6 +191,8 @@ int io_interface(std::string * input) {
 		key = 6;
 	else if (keyword == "scripts")
 		key = 7;
+	else if (keyword == "numbers")
+		key = 8;
 
 	if (key > 0)
 	{
@@ -188,6 +212,7 @@ int io_interface(std::string * input) {
 void help_parse(DatabaseInterface * dbi, std::string * input) {
 	bool sql		= false;
 	bool insert		= false;
+	bool numbers	= false;
 	bool label		= false;
 	bool scripts	= false;
 	bool betti		= false;
@@ -209,6 +234,8 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 			sql = true;
 		else if (arg == "insert")
 			insert = true;
+		else if (arg == "numbers")
+			numbers = true;
 		else if (arg == "label")
 			label = true;
 		else if (arg == "scripts")
@@ -238,6 +265,8 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 			std::cout << "\n" << sql_text << std::endl;
 		else if (insert)
 			std::cout << "\n" << insert_text << std::endl;
+		else if (numbers)
+			std::cout << "\n" << numbers_text << std::endl;
 		else if (label)
 			std::cout << "\n" << label_text << std::endl;
 		else if (scripts)
@@ -788,6 +817,103 @@ void label_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
+* parses the arguments for numbers
+**/
+void numbers_parse(DatabaseInterface * dbi, std::string * input) {
+	bool allexcept = false;
+	std::vector<bool> to_be_computed;
+	bool condition = false;
+	std::string query_condition = "";
+
+	for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+		to_be_computed.push_back(false);
+
+	while (!input->empty())
+	{
+		size_t cut_index;
+		std::string arg;
+
+		if (condition)
+		{
+			if (input->front() == '"')
+			{
+				arg = input->substr(1, std::string::npos);
+				cut_index = arg.find_first_of('"');
+
+				if (cut_index == std::string::npos)
+				{
+					PARSE_ERROR("Second '\"' missing.");
+					FAIL("Computing numbers", "");
+					return;
+				}
+
+				query_condition = arg.substr(0, cut_index);
+				cut_index += 2;
+			}
+			else
+			{
+				PARSE_ERROR("'-where' must be followed by an SQL expression in quotation marks (\"\").");
+				FAIL("Computing numbers", "");
+				return;
+			}
+
+			condition = false;
+		}
+		else
+		{
+			cut_index = input->find_first_of(' ');
+			arg = input->substr(0, cut_index);
+
+			if (arg == "-allexcept")
+				allexcept = true;
+			else if (arg == "-where")
+				condition = true;
+			else
+			{
+				int i;
+				for (i = 0; i < NUMBER_NUMBERVECTORS; i++)
+				{
+					if (arg == "-" + std::string(NUMBERVECTORS[i]))
+					{
+						to_be_computed[i] = true;
+						break;
+					}
+				}
+
+				if (i >= NUMBER_NUMBERVECTORS)
+				{
+					INVALID_ARG();
+					FAIL("Computing numbers", "");
+					return;
+				}
+			}
+		}
+
+		if (cut_index < input->length() - 1)
+			*input = input->substr(cut_index + 1, std::string::npos);
+		else
+			*input = "";
+	}
+
+	if (allexcept)
+	{
+		for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+			to_be_computed[i] = !to_be_computed[i];
+	}
+
+	for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+	{
+		if (to_be_computed[i])
+		{
+			PROGRESS(1, "computing " << NUMBERVECTORS[i]);
+
+			dbi->update_numbers(GETTERS[i], &(COLUMNVECTORS[i]), query_condition.empty() ? 0 : query_condition.c_str());
+		}
+	}
+}
+
+
+/**
  * parses the arguments for gen_M2_scripts and calls gen_m2_scripts with the appropriate arguments
 **/
 void script_parse(DatabaseInterface * dbi, std::string * input) {
@@ -950,6 +1076,7 @@ int main(int argc, char* argv[]) {
 		case 5: label_parse(&dbi, &input); break;
 		case 6: betti_parse(&dbi, &input); break;
 		case 7: script_parse(&dbi, &input); break;
+		case 8: numbers_parse(&dbi, &input); break;
 		default: break;
 		}
 	}
