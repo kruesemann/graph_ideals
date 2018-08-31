@@ -49,9 +49,17 @@ void DatabaseInterface::reset_view() {
 void DatabaseInterface::show_view(int limit) {
 	if (number_columns != 0)
 	{
+		for (unsigned j = 0; j < number_columns; j++)
+			std::cout << std::string(column_widths[j], '_');
+		std::cout << "\n";
+
 		for (unsigned j = 0; j < number_columns - 1; j++)
 			std::cout << view_columns[j] << std::string(column_widths[j] - view_columns[j].length(), ' ');
 		std::cout << view_columns[number_columns - 1] << "\n";
+
+		for (unsigned j = 0; j < number_columns; j++)
+			std::cout << std::string(column_widths[j], '_');
+		std::cout << "\n";
 
 		for (int i = 0; i < (int)number_rows; i++)
 		{
@@ -78,9 +86,17 @@ void DatabaseInterface::show_view(int limit) {
 void DatabaseInterface::save_view(std::ofstream * file) {
 	if (number_columns != 0)
 	{
+		for (unsigned j = 0; j < number_columns; j++)
+			*file << std::string(column_widths[j], '_');
+		*file << "\n";
+
 		for (unsigned j = 0; j < number_columns - 1; j++)
 			*file << view_columns[j] << std::string(column_widths[j] - view_columns[j].length(), ' ');
 		*file << view_columns[number_columns - 1] << "\n";
+
+		for (unsigned j = 0; j < number_columns; j++)
+			*file << std::string(column_widths[j], '_');
+		*file << "\n";
 
 		for (unsigned i = 0; i < number_rows; i++)
 		{
@@ -801,6 +817,9 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 		return false;
 	}
 
+	for (unsigned i = 0; i < columns->size(); i++)
+		sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + columns->at(i) + " INT;").c_str(), 0, 0, 0);
+
 	std::string query = "SELECT graphID,graphOrder,edges FROM Graphs WHERE (" + std::string(columns->at(0)) + " IS NULL";
 	for (unsigned i = 1; i < columns->size(); i++)
 		query += " AND " + std::string(columns->at(i)) + " IS NULL";
@@ -834,9 +853,6 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 		sqlite3_finalize(stmt);
 		return false;
 	}
-
-	for (unsigned i = 0; i < columns->size(); i++)
-		sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + columns->at(i) + " INT;").c_str(), 0, 0, 0);
 
 	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
 	unsigned i;

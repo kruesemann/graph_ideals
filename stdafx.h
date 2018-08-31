@@ -14,3 +14,4 @@
 #define PROGRESS(X,Y)	((std::cout << std::string(X * 3, ' ') << Y << "...\n"),								(void)0)
 #define RESULT(X)		((std::cout << X << std::endl),															(void)0)
 #define SQL_ERROR(X)	((std::cout << "SQL error: '" << X << "' is not a valid statement." << std::endl),		(void)0)
+#define SEPARATE()		((std::cout << "\n\n" << std::endl),													(void)0)

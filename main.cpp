@@ -16,7 +16,7 @@
 					"Order of arguments without minus '-' in front DOES matter.\n" \
 					"A slash '/' between arguments indicates mutual exclusivity.\n" \
 					"\n" \
-					"Enter 'help (keyword)' to learn how to use the various features of this program.\n" \
+					"Enter 'help ([keyword])' to learn how to use the various features of this program.\n" \
 					"\n" \
 					"--Example: help insert\n" \
 					"\n" \
@@ -36,15 +36,26 @@
 #define sql_text	"Some SQL queries (note that sqlite is not case-sensitive, but this program only accepts 'SELECT', 'Select' and 'select' for queries):\n" \
 					"\n" \
 					"SELECT * FROM Graphs WHERE graphOrder == 3;\n" \
-					"SELECT DISTINCT graphOrder FROM Graphs WHERE beiReg == 4;\n" \
-					"SELECT graphID, graphOrder, beiBettis FROM Graphs WHERE graphOrder == 7 AND beiReg == 4;\n" \
-					"SELECT beiReg FROM Graphs ORDER BY beiReg DESC LIMIT 1;\n" \
-					"SELECT MAX(beiReg) FROM Graphs;\n" \
+					"SELECT graphID, graphOrder, graphSize FROM Graphs WHERE graphOrder == 7 AND graphSize == 4;\n" \
+					"SELECT DISTINCT graphOrder FROM Graphs WHERE graphSize == 4;\n" \
+					"SELECT graphSize FROM Graphs ORDER BY graphSize DESC LIMIT 5;\n" \
+					"SELECT MAX(graphSize) FROM Graphs;\n" \
 					"SELECT graphOrder, count(*) FROM Graphs WHERE type LIKE \"%cograph%\" GROUP BY graphOrder;\n" \
-					"SELECT t1.beiReg as coneRegularity, t2.beiReg AS oldRegularity\n" \
-					"  FROM Graphs t1 INNER JOIN Graphs t2\n" \
-					"  ON t2.nGraphID = t1.coneOver\n" \
-					"  WHERE t1.beiReg <> t2.beiReg;\n" \
+					"SELECT graphOrder, graphSize, CASE WHEN graphSize <= 1.5 * graphOrder THEN \"sparse\" ELSE \"dense\" AS adjacencies FROM Graphs;\n" \
+					"SELECT count(CASE WHEN type LIKE \"%cograph%\" THEN 1 END) AS cographs,\n" \
+					"  count(CASE WHEN type LIKE \"%closed%\" THEN 1 END) AS closedGraphs\n" \
+					"  FROM Graphs;\n" \
+					"SELECT t.type, count(g.graphID) AS count\n" \
+					"  FROM (SELECT \"connected\" AS type\n" \
+					"    UNION SELECT \"cograph\"\n" \
+					"    UNION SELECT \"euler\"\n" \
+					"    UNION SELECT \"chordal\"\n" \
+					"    UNION SELECT \"claw-free\"\n" \
+					"    UNION SELECT \"closed\"\n" \
+					"  ) AS t\n" \
+					"  INNER JOIN Graphs AS g\n" \
+					"  ON g.type LIKE \"%\" || t.type || \"%\"\n" \
+					"  GROUP BY t.type ORDER BY count;\n" \
 					"\n" \
 					"UPDATE Graphs SET type = NULL, cliqueNumber = -1 WHERE graphID <> 1;\n" \
 					"DELETE FROM Graphs WHERE NOT type IS NULL;\n"
@@ -64,7 +75,7 @@
 					"--The 'file name' must specify a relative path to a correctly formatted text file. It can be entered with or without quotation marks '\"'.\n"
 
 
-#define numbers_text	"Enter 'numbers (-allexcept) -[numbers1] -[numbers2] ... (-where \"[condition]\")' to compute all specified numbers of the graphs in the database.\n" \
+#define numbers_text	"Enter 'numbers (-allexcept) (-[numbers1] -[numbers2] ...) (-where \"[condition]\")' to compute all specified numbers of the graphs in the database.\n" \
 						"\n" \
 						"--Example: numbers -clique -where \"graphOrder == 4\"\n" \
 						"\n" \
@@ -76,7 +87,7 @@
 						"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be updated.\n"
 
 
-#define label_text	"Enter 'label (-allexcept) -[type1] -[type2] ... (-where \"[condition]\")' to label all graphs of the specified types in the database as such.\n" \
+#define label_text	"Enter 'label (-allexcept) (-[type1] -[type2] ...) (-where \"[condition]\")' to label all graphs of the specified types in the database as such.\n" \
 					"\n" \
 					"--Example: label -allexcept -chordal -closed -where \"graphOrder < 5\"\n" \
 					"\n" \
@@ -164,7 +175,7 @@ int io_interface(std::string * input) {
 	if (!getline(std::cin, *input))
 		return 0;
 
-	std::cout << "____________________________________" << std::endl;
+	SEPARATE();
 
 	size_t cut_index = input->find_first_of(' ');
 	std::string keyword = input->substr(0, cut_index);
@@ -336,7 +347,7 @@ void show_parse(DatabaseInterface * dbi, std::string * input) {
 					PARSE_ERROR("Not a valid input.");
 					INPUT("");
 				}
-				std::cout << "____________________________________" << std::endl;
+				SEPARATE();
 			}
 			else
 				force = true;
@@ -357,7 +368,7 @@ void show_parse(DatabaseInterface * dbi, std::string * input) {
 				PARSE_ERROR("Not a valid input.");
 				INPUT("");
 			}
-			std::cout << "____________________________________" << std::endl;
+			SEPARATE();
 		}
 		else
 		{
@@ -684,7 +695,7 @@ void betti_parse(DatabaseInterface * dbi, std::string * input) {
 		if (!getline(std::cin, arg))
 			return;
 
-		std::cout << "____________________________________" << std::endl;
+		SEPARATE();
 
 		scriptID = 0;
 		while (scriptID == 0)
@@ -701,7 +712,7 @@ void betti_parse(DatabaseInterface * dbi, std::string * input) {
 					if (!getline(std::cin, arg))
 						return;
 
-					std::cout << "____________________________________" << std::endl;
+					SEPARATE();
 					break;
 				}
 
