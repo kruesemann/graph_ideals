@@ -53,7 +53,7 @@ public:
 	void save_view_visualisation(std::ofstream * file);
 	void save_view_g6(std::ofstream * file);
 
-	void generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name);
+	void generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name, unsigned index);
 
 	void show_scripts();
 
@@ -68,6 +68,8 @@ public:
 	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
 	bool update_numbers(std::vector<unsigned>(Graph::*graph_numbers)(), std::vector<const char *> * columns, const char * query_condition);
 
-	bool add_betti_data(unsigned scriptID);
+	unsigned find_script_data(unsigned scriptID, std::string * ideal, std::string * query_condition, std::string * datetime);
+	bool insert_betti_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);
+	bool insert_hpoldeg_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);
 };
 
