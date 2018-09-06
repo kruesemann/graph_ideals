@@ -165,7 +165,7 @@ void DatabaseInterface::show_view_rich(int limit) {
 				break;
 			}
 
-			std::cout << std::string(overall_width, '-') << "\n" << columns << "\n";
+			std::cout << std::string(overall_width, '_') << "\n" << columns << "\n";
 
 			index = 0;
 			std::vector<BettiTable> tables;
@@ -235,7 +235,7 @@ void DatabaseInterface::save_view_rich(std::ofstream * file) {
 
 		for (int i = 0; i < (int)number_rows; i++)
 		{
-			*file << std::string(overall_width, '-') << "\n" << columns << "\n";
+			*file << std::string(overall_width, '_') << "\n" << columns << "\n";
 
 			index = 0;
 			std::vector<BettiTable> tables;
@@ -474,7 +474,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 
 		script.pop_back();
 		script.pop_back();
-		script += "\n}\n\nfilename=\"" + std::to_string(index) + "_" + datetime + "_" + *idealname + "_" + std::to_string(k) + ".result\";\nN=" + std::to_string(i - 1) + ";\n\n" + buffer.str();
+		script += "\n};\n\nfilename=\"" + std::to_string(index) + "_" + datetime + "_" + *idealname + "_" + std::to_string(k) + ".result\";\nN=" + std::to_string(i - 1) + ";\n\n" + buffer.str();
 
 		std::string filename = std::to_string(index) + "_" + datetime + "_" + *idealname + "_" + std::to_string(k) + ".m2";
 		std::ofstream kFile(filename, std::ios::trunc);
@@ -725,18 +725,10 @@ bool DatabaseInterface::create_graphs_table() {
 
 
 /**
- * batch inserts graphs from given file
+ * batch imports graphs from given file
 **/
-void DatabaseInterface::insert_graphs(std::ifstream * file, FORMAT format) {
-	if (format == FORMAT::NONE)
-		throw "noFormat";
-
+void DatabaseInterface::import_graphs(std::ifstream * file, bool (Graph::*Read_next_format)(std::ifstream * file)) {
 	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
-
-	bool (Graph::*read_function)(std::ifstream *) = &Graph::read_next_g6_format;
-	
-	if (format == FORMAT::LIST)
-		read_function = &Graph::read_next_list_format;
 	
 	while (true)
 	{
@@ -744,14 +736,14 @@ void DatabaseInterface::insert_graphs(std::ifstream * file, FORMAT format) {
 		Graph g;
 		std::string statement = "INSERT INTO Graphs (graphOrder,graphSize,edges) VALUES ";
 
-		for (i = 0; i < 10000 && (g.*read_function)(file); i++)
+		for (i = 0; i < 10000 && (g.*Read_next_format)(file); i++)
 			statement += "(" + std::to_string(g.get_order()) + "," + std::to_string(g.get_size()) + ",'" + g.convert_to_string() + "'),";
 
 		statement.pop_back();
 
 		execute_SQL_statement(&statement);
 
-		PROGRESS(2, i << " graphs inserted");
+		PROGRESS(2, i << " graphs imported");
 
 		if (i < 10000)
 			break;

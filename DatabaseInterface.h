@@ -63,7 +63,7 @@ public:
 	bool create_scripts_table();
 	bool create_graphs_table();
 
-	void insert_graphs(std::ifstream * file, FORMAT format);
+	void import_graphs(std::ifstream * file, bool (Graph::*Read_next_format)(std::ifstream * file));
 
 	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
 	bool update_numbers(std::vector<unsigned>(Graph::*graph_numbers)(), std::vector<const char *> * columns, const char * query_condition);

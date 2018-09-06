@@ -3,9 +3,6 @@
 #include "stdafx.h"
 
 
-enum class FORMAT { NONE, G6, LIST, ADJ };
-
-
 class Graph
 {
 private:
