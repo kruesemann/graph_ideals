@@ -14,6 +14,8 @@ private:
 
 	std::vector<unsigned> gen_order_4_subsets();
 	bool is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned subset_nr);
+	bool is_induced_connected(unsigned * vertices, unsigned subset_order);
+	bool is_induced_path(int subset, unsigned subset_order);
 
 	std::pair<unsigned *, unsigned *> gen_lexicographic_labeling();
 
@@ -45,9 +47,7 @@ public:
 		adjacencies = new unsigned[order * order];
 
 		for (unsigned i = 0; i < order * order; i++)
-		{
 			adjacencies[i] = 0;
-		}
 	}
 
 	Graph(unsigned order, unsigned * adj);
@@ -95,7 +95,13 @@ public:
 	bool read_next_g6_format(std::ifstream * file);
 	bool read_next_list_format(std::ifstream * file);
 
+	Graph get_complement();
+
 	std::vector<unsigned> get_clique_numbers();
+	std::vector<unsigned> get_detour_number();
+	std::vector<unsigned> get_extreme_degrees();
+	std::vector<unsigned> get_independence_numbers();
+	std::vector<unsigned> get_girth();
 
 	bool is_connected();
 	bool is_cograph();
@@ -103,8 +109,8 @@ public:
 	bool is_chordal();
 	bool is_clawfree();
 	bool is_closed();
+	bool is_cone();
 
-	std::pair<unsigned *, unsigned *> gen_closed_labeling_pair();
 	unsigned * gen_closed_labeling();
 };
 

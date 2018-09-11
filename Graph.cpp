@@ -57,6 +57,21 @@ void refine(std::list<std::vector<unsigned>> * partitions, bool * set) {
 }
 
 
+/**
+* Brian Kernighan's algorithm to count set bits in integer (count ones in binary representation)
+**/
+inline unsigned count_set_bits(int n)
+{
+	unsigned count = 0;
+	while (n)
+	{
+		n &= (n - 1);
+		count++;
+	}
+	return count;
+}
+
+
 //########## private member functions ##########
 /**
 * recursively adds all inclusion-maximal cliques to max_cliques and returns the current clique number via Bron-Kerbosch algorithm with pivots
@@ -76,7 +91,7 @@ unsigned Graph::bron_kerbosch_pivot(std::vector<std::vector<unsigned>> * max_cli
 	for (unsigned i = 0; i < include_some->size();)
 	{
 		unsigned v = include_some->at(i);
-		if (!adjacencies[get_index(pivot, v, order)])
+		if (!adjacent(pivot, v))
 		{
 			std::vector<unsigned> new_all;
 			std::vector<unsigned> new_some;
@@ -93,14 +108,14 @@ unsigned Graph::bron_kerbosch_pivot(std::vector<std::vector<unsigned>> * max_cli
 				if (j < some_size)
 				{
 					unsigned w = include_some->at(j);
-					if (adjacencies[get_index(v, w, order)])
+					if (adjacent(v, w))
 						new_some.push_back(w);
 				}
 
 				if (j < none_size)
 				{
 					unsigned w = include_none->at(j);
-					if (adjacencies[get_index(v, w, order)])
+					if (adjacent(v, w))
 						new_none.push_back(w);
 				}
 			}
@@ -159,7 +174,7 @@ bool Graph::is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned su
 	{
 		for (unsigned j = i + 1; j < 4; j++)
 		{
-			if (adjacencies[get_index(subset[i], subset[j], order)])
+			if (adjacent(subset[i], subset[j]))
 			{
 				degrees[i]++;
 				degrees[j]++;
@@ -178,6 +193,103 @@ bool Graph::is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned su
 	}
 
 	return check_sum_degrees == 6;
+}
+
+
+/**
+ * tests if a given subset in binary representation of order subset_order is an induced connected subgraph via depth-first-search
+**/
+bool Graph::is_induced_connected(unsigned * vertices, unsigned subset_order) {
+	if (subset_order < 2)
+		return true;
+
+	bool * visited = new bool[subset_order];
+	std::vector<unsigned> stack = { vertices[0] };
+
+	visited[0] = true;
+	for (unsigned i = 1; i < subset_order; i++)
+		visited[i] = false;
+
+	while (!stack.empty())
+	{
+		unsigned current = stack.back();
+		stack.pop_back();
+
+		for (unsigned i = 0; i < subset_order; i++)
+		{
+			unsigned neighbor = vertices[i];
+			if (!visited[i]
+				&& adjacent(current, neighbor))
+			{
+				stack.push_back(neighbor);
+				visited[i] = true;
+			}
+		}
+	}
+
+	for (unsigned i = 1; i < subset_order; i++)
+	{
+		if (!visited[i])
+		{
+			delete[] visited;
+			return false;
+		}
+	}
+
+	delete[] visited;
+	return true;
+}
+
+
+/**
+* tests if a given subset in binary representation of order subset_order is an induced path
+**/
+bool Graph::is_induced_path(int subset, unsigned subset_order) {
+	unsigned * degrees = new unsigned[subset_order];
+	unsigned * vertices = new unsigned[subset_order];
+
+	for (unsigned i = 0, v = 1; i < subset_order; i++, v++)
+	{
+		degrees[i] = 0;
+		while (!(subset & (1 << (order - v))))
+			v++;
+		vertices[i] = v;
+	}
+
+	for (unsigned i = 0; i < subset_order; i++)
+	{
+		for (unsigned j =  i + 1; j < subset_order; j++)
+		{
+			if (adjacent(vertices[i], vertices[j]))
+			{
+				degrees[i]++;
+				degrees[j]++;
+			}
+		}
+	}
+
+	unsigned check_sum_degrees = 0;
+	std::vector<unsigned> deg1_vertices;
+
+	for (unsigned i = 0; i < subset_order; i++)
+	{
+		if (degrees[i] == 1)
+			deg1_vertices.push_back(vertices[i]);
+		else if (degrees[i] != 2)
+		{
+				delete[] degrees;
+				delete[] vertices;
+				return false;
+		}
+		check_sum_degrees += degrees[i];
+	}
+
+	bool connected = is_induced_connected(vertices, subset_order);
+
+	delete[] vertices;
+	delete[] degrees;
+
+	return connected && check_sum_degrees == (subset_order - 1) * 2;
 }
 
 
@@ -222,7 +334,7 @@ std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_labeling() {
 		for (unsigned neighbour = 1; neighbour <= order; neighbour++)
 		{
 			if (!visited[neighbour - 1]
-				&& adjacencies[get_index(vertex, neighbour, order)])
+				&& adjacent(vertex, neighbour))
 				set[neighbour - 1] = true;
 			else
 				set[neighbour - 1] = false;
@@ -253,7 +365,7 @@ bool Graph::is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned su
 	{
 		for (unsigned j = i + 1; j < 4; j++)
 		{
-			if (adjacencies[get_index(subset[i], subset[j], order)])
+			if (adjacent(subset[i], subset[j]))
 			{
 				degrees[i]++;
 				degrees[j]++;
@@ -285,7 +397,7 @@ bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
 		int nearest_prior_neighbour;
 		for (nearest_prior_neighbour = (int)(peo_indices[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
 		{
-			if (adjacencies[get_index(vertex, peo[nearest_prior_neighbour], order)])
+			if (adjacent(vertex, peo[nearest_prior_neighbour]))
 				break;
 		}
 
@@ -293,8 +405,8 @@ bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
 		{
 			for (int prior_neighbour = 0; prior_neighbour < nearest_prior_neighbour; prior_neighbour++)
 			{
-				if (adjacencies[get_index(vertex, peo[prior_neighbour], order)]
-					&& !adjacencies[get_index(peo[nearest_prior_neighbour], peo[prior_neighbour], order)])
+				if (adjacent(vertex, peo[prior_neighbour])
+					&& !adjacent(peo[nearest_prior_neighbour], peo[prior_neighbour]))
 					return false;
 			}
 		}
@@ -302,7 +414,7 @@ bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
 		int nearest_later_neighbour;
 		for (nearest_later_neighbour = (int)(peo_indices[vertex - 1]) + 1; nearest_later_neighbour < (int)order; nearest_later_neighbour++)
 		{
-			if (adjacencies[get_index(vertex, peo[nearest_later_neighbour], order)])
+			if (adjacent(vertex, peo[nearest_later_neighbour]))
 				break;
 		}
 
@@ -310,8 +422,8 @@ bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
 		{
 			for (int later_neighbour = order - 1; later_neighbour > nearest_later_neighbour; later_neighbour--)
 			{
-				if (adjacencies[get_index(vertex, peo[later_neighbour], order)]
-					&& !adjacencies[get_index(peo[nearest_later_neighbour], peo[later_neighbour], order)])
+				if (adjacent(vertex, peo[later_neighbour])
+					&& !adjacent(peo[nearest_later_neighbour], peo[later_neighbour]))
 					return false;
 			}
 		}
@@ -331,7 +443,7 @@ bool Graph::peo_swappable(unsigned * peo, unsigned * h, int t) {
 	unsigned x = peo[t];
 	unsigned y = peo[t + 1];
 
-	return !adjacencies[get_index(x, y, order)] || h[x - 1] == h[y - 1] + 1;
+	return !adjacent(x, y) || h[x - 1] == h[y - 1] + 1;
 }
 
 
@@ -348,7 +460,7 @@ bool Graph::peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t
 	peo_indices[x - 1] = peo_indices[y - 1];
 	peo_indices[y - 1] = temp;
 
-	if (adjacencies[get_index(x, y, order)])
+	if (adjacent(x, y))
 	{
 		h[x - 1]--;
 		h[y - 1]++;
@@ -378,7 +490,7 @@ bool Graph::peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, uns
 		a[t] = b[t];
 		b[t] = temp;
 
-		if (adjacencies[get_index(x, y, order)])
+		if (adjacent(x, y))
 		{
 			h[x - 1]--;
 			h[y - 1]++;
@@ -477,13 +589,13 @@ bool Graph::is_simplicial(unsigned vertex, bool * visited) {
 	for (unsigned v = 1; v <= order; v++)
 	{
 		if (!visited[v - 1]
-			&& adjacencies[get_index(vertex, v, order)])
+			&& adjacent(vertex, v))
 		{
 			for (unsigned w = v + 1; w <= order; w++)
 			{
 				if (!visited[w - 1]
-					&& adjacencies[get_index(vertex, w, order)]
-					&& !adjacencies[get_index(v, w, order)])
+					&& adjacent(vertex, w)
+					&& !adjacent(v, w))
 					return false;
 			}
 		}
@@ -563,7 +675,7 @@ void Graph::gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h
 		unsigned neighbour_count = 0;
 		for (unsigned i = peo_indices[v - 1] + 1; i < order; i++)
 		{
-			if (adjacencies[get_index(v, peo[i], order)])
+			if (adjacent(v, peo[i]))
 				neighbour_count++;
 		}
 		h[v - 1] = neighbour_count;
@@ -579,7 +691,7 @@ void Graph::gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h
 bool Graph::is_universal(unsigned vertex) {
 	for (unsigned w = 1; w <= order; w++)
 		if (w != vertex
-			&& !adjacencies[get_index(vertex, w, order)])
+			&& !adjacent(vertex, w))
 			return false;
 
 	return true;
@@ -604,7 +716,7 @@ Graph::Graph(unsigned order, unsigned * adj) {
 
 	for (unsigned v = 1; v <= order; v++)
 		for (unsigned w = v + 1; w <= order; w++)
-			if (adjacencies[get_index(v, w, order)] != 0)
+			if (adjacencies[get_index(v, w, order)])
 				size++;
 }
 
@@ -743,7 +855,7 @@ std::string Graph::convert_to_string() {
 	{
 		for (unsigned second_vertex = first_vertex + 1; second_vertex <= order; second_vertex++)
 		{
-			if (adjacencies[get_index(first_vertex, second_vertex, order)])
+			if (adjacent(first_vertex, second_vertex))
 			{
 				edges.push_back('{');
 				edges += std::to_string(first_vertex);
@@ -772,7 +884,7 @@ std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling_indices) {
 	{
 		for (unsigned second_vertex = first_vertex + 1; second_vertex <= order; second_vertex++)
 		{
-			if (adjacencies[get_index(first_vertex, second_vertex, order)])
+			if (adjacent(first_vertex, second_vertex))
 			{
 				edges.push_back('{');
 				edges += std::to_string(labeling_indices[first_vertex - 1] + 1);
@@ -1046,6 +1158,28 @@ bool Graph::read_next_list_format(std::ifstream * file) {
 
 
 /**
+ * returns the edgewise complement of the graph
+**/
+Graph Graph::get_complement() {
+	unsigned * adj = new unsigned[order * order];
+
+	for (unsigned v = 1; v <= order; v++)
+	{
+		for (unsigned w = v + 1; w <= order; w++)
+		{
+			unsigned i = get_index(v, w, order);
+			unsigned j = get_index(w, v, order);
+
+			adj[i] = 1 - adjacencies[i];
+			adj[j] = 1 - adjacencies[j];
+		}
+	}
+
+	return Graph(order, adj);
+}
+
+
+/**
 * returns the clique number and the number of inclusion-maximal cliques
 **/
 std::vector<unsigned> Graph::get_clique_numbers() {
@@ -1063,46 +1197,144 @@ std::vector<unsigned> Graph::get_clique_numbers() {
 
 
 /**
- * tests if the graph is connected via depth-first-search
+ * returns the detour number, i.e., the length of the longest induce path
 **/
-bool Graph::is_connected() {
-	if (order < 2)
-		return true;
+std::vector<unsigned> Graph::get_detour_number() {
+	unsigned pow_set_size = nth_power(2, order);
+	unsigned max_detour = 0;
 
-	bool * visited = new bool[order];
-	std::vector<unsigned> stack = { 1 };
-
-	visited[0] = true;
-	for (unsigned i = 1; i < order; i++)
-		visited[i] = false;
-
-	while (!stack.empty())
+	for (int subset = pow_set_size - 1; subset > 0; subset--)
 	{
-		unsigned current = stack.back();
-		stack.pop_back();
+		unsigned subset_order = count_set_bits(subset);
 
-		for (unsigned neighbour = 1; neighbour <= order; neighbour++)
+		if (max_detour < subset_order - 1
+			&& is_induced_path(subset, subset_order))
+			max_detour = subset_order - 1;
+	}
+
+	return { max_detour };
+}
+
+
+/**
+ * returns the minimum and maximum degree of vertices in the graph
+**/
+std::vector<unsigned> Graph::get_extreme_degrees() {
+	unsigned max_deg = 0;
+	unsigned min_deg = order - 1;
+
+	for (unsigned v = 1; v <= order; v++)
+	{
+		unsigned degree = 0;
+		
+		for (unsigned w = 1; w <= order; w++)
+			degree += adjacencies[get_index(v, w, order)];
+
+		if (degree > max_deg)
+			max_deg = degree;
+		if (degree < min_deg)
+			min_deg = degree;
+	}
+
+	return { min_deg, max_deg };
+}
+
+
+/**
+* returns the independence number and the number of inclusion-maximal independent sets via respective clique numbers in the complement graph
+**/
+std::vector<unsigned> Graph::get_independence_numbers() {
+	Graph complement = get_complement();
+	return complement.get_clique_numbers();
+}
+
+
+/**
+ * returns the girth of the graph, i.e., the minimum length of a cycle (0 if there are none)
+**/
+std::vector<unsigned> Graph::get_girth() {
+	unsigned girth = order + 1;
+	bool * visited = new bool[order];
+	unsigned * parent = new unsigned[order];
+	unsigned * distance = new unsigned[order];
+
+	for (unsigned v = 1; v <= order; v++)
+	{
+		std::vector<unsigned> queue;
+
+		for (unsigned neighbor = 1; neighbor <= order; neighbor++)
 		{
-			if (!visited[neighbour - 1]
-				&& adjacencies[get_index(current, neighbour, order)])
+			if (neighbor == v)
 			{
-				stack.push_back(neighbour);
-				visited[neighbour - 1] = true;
+				visited[neighbor - 1] = true;
+				parent[neighbor - 1] = 0;
+				distance[neighbor - 1] = 0;
+			}
+			else if (adjacent(v, neighbor))
+			{
+				visited[neighbor - 1] = false;
+				parent[neighbor - 1] = v;
+				distance[neighbor - 1] = 1;
+				queue.push_back(neighbor);
+			}
+			else
+			{
+				visited[neighbor - 1] = false;
+				parent[neighbor - 1] = 0;
+				distance[neighbor - 1] = order + 1;
+			}
+		}
+
+		if (queue.size() < 2)
+			continue;
+
+		while (!queue.empty())
+		{
+			unsigned current = queue.front();
+			queue.erase(queue.begin());
+			visited[current - 1] = true;
+
+			for (unsigned neighbor = 1; neighbor <= order; neighbor++)
+			{
+				if (neighbor != current
+					&& adjacent(current, neighbor)
+					&& neighbor != parent[current - 1])
+				{
+					if (!visited[neighbor - 1])
+					{
+						parent[neighbor - 1] = current;
+						distance[neighbor - 1] = distance[current - 1] + 1;
+						queue.push_back(neighbor);
+					}
+					else if (girth > distance[neighbor - 1] + distance[current - 1] + 1)
+						girth = distance[neighbor - 1] + distance[current - 1] + 1;
+				}
 			}
 		}
 	}
 
-	for (unsigned i = 1; i < order; i++)
-	{
-		if (!visited[i])
-		{
-			delete[] visited;
-			return false;
-		}
-	}
-
 	delete[] visited;
-	return true;
+	delete[] parent;
+	delete[] distance;
+
+	if (girth == order + 1)
+		girth = 0;
+	return { girth };
+}
+
+
+/**
+ * tests if the graph is connected
+**/
+bool Graph::is_connected() {
+	unsigned * vertices = new unsigned[order];
+	for (unsigned i = 0; i < order; i++)
+		vertices[i] = i + 1;
+
+	bool connected = is_induced_connected(vertices, order);
+
+	delete[] vertices;
+	return connected;
 }
 
 
@@ -1129,7 +1361,7 @@ bool Graph::is_cograph() {
  * tests if the graph is euler, i.e. it has no vertices of odd degree
 **/
 bool Graph::is_euler() {
-	if (order == 0)
+	if (order < 1)
 		return true;
 
 	unsigned * degrees = new unsigned[order];
@@ -1141,7 +1373,7 @@ bool Graph::is_euler() {
 	{
 		for (unsigned second_vertex = first_vertex + 1; second_vertex <= order; second_vertex++)
 		{
-			if (adjacencies[get_index(first_vertex, second_vertex, order)])
+			if (adjacent(first_vertex, second_vertex))
 			{
 				degrees[first_vertex - 1]++;
 				degrees[second_vertex - 1]++;
@@ -1177,7 +1409,7 @@ bool Graph::is_chordal() {
 		int nearest_prior_neighbour;
 		for (nearest_prior_neighbour = (int)(labeling.second[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
 		{
-			if (adjacencies[get_index(vertex, labeling.first[nearest_prior_neighbour], order)])
+			if (adjacent(vertex, labeling.first[nearest_prior_neighbour]))
 				break;
 		}
 
@@ -1185,8 +1417,8 @@ bool Graph::is_chordal() {
 		{
 			for (int prior_neighbour = 0; prior_neighbour < nearest_prior_neighbour; prior_neighbour++)
 			{
-				if (adjacencies[get_index(vertex, labeling.first[prior_neighbour], order)]
-					&& !adjacencies[get_index(labeling.first[nearest_prior_neighbour], labeling.first[prior_neighbour], order)])
+				if (adjacent(vertex, labeling.first[prior_neighbour])
+					&& !adjacent(labeling.first[nearest_prior_neighbour], labeling.first[prior_neighbour]))
 				{
 					delete[] labeling.first;
 					delete[] labeling.second;
@@ -1259,34 +1491,42 @@ bool Graph::is_closed() {
 
 
 /**
+ * tests if the graph is a cone, i.e. if it has a universal vertex
+**/
+bool Graph::is_cone() {
+	for (unsigned v = 1; v <= order; v++)
+	{
+		if (is_universal(v))
+			return true;
+	}
+	return false;
+}
+
+
+/**
  * expects the graph to be closed
  * returns a labeling with regards to which the graph is closed
 **/
-std::pair<unsigned *, unsigned *> Graph::gen_closed_labeling_pair() {
+unsigned * Graph::gen_closed_labeling() {
 	if (order < 1)
-		return std::pair<unsigned *, unsigned *>(0, 0);
+		return 0;
 
-	unsigned * peo = new unsigned[order];
 	unsigned * peo_indices = new unsigned[order];
 
 	if (order == 1)
 	{
-		peo[0] = 1;
 		peo_indices[0] = 0;
-
-		return std::pair<unsigned *, unsigned *>(peo, peo_indices);
+		return peo_indices;
 	}
 
 	if (order == 2)
 	{
-		peo[0] = 1;
-		peo[1] = 2;
 		peo_indices[0] = 0;
 		peo_indices[1] = 1;
-
-		return std::pair<unsigned *, unsigned *>(peo, peo_indices);
+		return peo_indices;
 	}
 
+	unsigned * peo = new unsigned[order];
 	bool closed = false;
 	unsigned * h = new unsigned[order];
 	unsigned * a = new unsigned[order / 2];
@@ -1307,13 +1547,6 @@ std::pair<unsigned *, unsigned *> Graph::gen_closed_labeling_pair() {
 	delete[] h;
 	delete[] a;
 	delete[] b;
-
-	return std::pair<unsigned *, unsigned *>(peo, peo_indices);
-}
-
-
-unsigned * Graph::gen_closed_labeling() {
-	std::pair<unsigned *, unsigned *> labeling_pair = gen_closed_labeling_pair();
-	delete[] labeling_pair.first;
-	return labeling_pair.second;
+	delete[] peo;
+	return peo_indices;
 }

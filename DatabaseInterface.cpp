@@ -403,9 +403,9 @@ void DatabaseInterface::save_view_g6(std::ofstream * file) {
 
 
 /**
-* generates Macaulay2 scripts to compute the Betti tables for the factor ring of the initial ideal of the specified ideal type of all graphs satisfying query_condition, each labeled wrt to the given labeling
+* generates Macaulay2 scripts of all graphs satisfying query_condition, based on template filename, each labeled wrt to the given labeling labeling_name
 **/
-void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name, unsigned index) {
+void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name, unsigned index) {
 	sqlite3_stmt * qry;
 
 	if (query_condition)
@@ -427,7 +427,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 		}
 	}
 
-	std::string default_filename = "template_" + *idealname + "_" + std::to_string(index) + ".m2";
+	std::string default_filename = "template_" + *name + "_" + std::to_string(index) + ".m2";
 	std::ifstream templ(filename ? filename : default_filename);
 
 	if (!templ.is_open())
@@ -474,9 +474,9 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 
 		script.pop_back();
 		script.pop_back();
-		script += "\n};\n\nfilename=\"" + std::to_string(index) + "_" + datetime + "_" + *idealname + "_" + std::to_string(k) + ".result\";\nN=" + std::to_string(i - 1) + ";\n\n" + buffer.str();
+		script += "\n};\n\nfilename=\"" + std::to_string(index) + "_" + datetime + "_" + *name + "_" + std::to_string(k) + ".result\";\nN=" + std::to_string(i - 1) + ";\n\n" + buffer.str();
 
-		std::string filename = std::to_string(index) + "_" + datetime + "_" + *idealname + "_" + std::to_string(k) + ".m2";
+		std::string filename = std::to_string(index) + "_" + datetime + "_" + *name + "_" + std::to_string(k) + ".m2";
 		std::ofstream kFile(filename, std::ios::trunc);
 
 		if (!kFile.is_open())
@@ -496,7 +496,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 		{
 			empty_edge_indices.pop_back();
 			PROGRESS(2, "generated '" << filename << "'.");
-			WARNING("Note, that there are no edges in graph(s) " << empty_edge_indices << " in this file. Taking the monomial ideal in this case might not work!");
+			WARNING("Note, that there are no edges in graph(s) " << empty_edge_indices << " in this file. Some Macaulay2 commands might not work here!");
 		}
 
 		if (i < batch_size)
@@ -512,8 +512,8 @@ void DatabaseInterface::generate_m2_scripts(std::string * idealname, unsigned * 
 	}
 
 
-	std::string columns = "INSERT INTO Scripts (idealname,";
-	std::string values = "datetime,resultType) VALUES ('" + *idealname + "',";
+	std::string columns = "INSERT INTO Scripts (name,";
+	std::string values = "datetime,resultType) VALUES ('" + *name + "',";
 
 	if (labeling_name)
 	{
@@ -693,7 +693,7 @@ bool DatabaseInterface::execute_SQL_statement(std::string * statement) {
 bool DatabaseInterface::create_scripts_table() {
 	std::string statement = "CREATE TABLE Scripts(" \
 		"scriptID INTEGER PRIMARY KEY," \
-		"idealname TEXT NOT NULL," \
+		"name TEXT NOT NULL," \
 		"labeling TEXT," \
 		"batchsize INT NOT NULL," \
 		"condition TEXT," \
@@ -918,11 +918,11 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 }
 
 
-unsigned DatabaseInterface::find_script_data(unsigned scriptID, std::string * ideal, std::string * query_condition, std::string * datetime) {
+unsigned DatabaseInterface::find_script_data(unsigned scriptID, std::string * name, std::string * query_condition, std::string * datetime) {
 	sqlite3_stmt * qry1;
-	if (sqlite3_prepare_v2(database, ("SELECT idealname,condition,datetime,resultType FROM Scripts WHERE scriptID == " + std::to_string(scriptID)).c_str(), -1, &qry1, 0) != SQLITE_OK)
+	if (sqlite3_prepare_v2(database, ("SELECT name,condition,datetime,resultType FROM Scripts WHERE scriptID == " + std::to_string(scriptID)).c_str(), -1, &qry1, 0) != SQLITE_OK)
 	{
-		SQL_ERROR("SELECT idealname,condition,datetime,resultType FROM Scripts WHERE scriptID == " << scriptID);
+		SQL_ERROR("SELECT name,condition,datetime,resultType FROM Scripts WHERE scriptID == " << scriptID);
 		FAIL("Adding Betti data", "");
 		sqlite3_finalize(qry1);
 		return -1;
@@ -935,7 +935,7 @@ unsigned DatabaseInterface::find_script_data(unsigned scriptID, std::string * id
 		return -1;
 	}
 
-	*ideal = (char *)sqlite3_column_text(qry1, 0);
+	*name = (char *)sqlite3_column_text(qry1, 0);
 	*query_condition = (char *)sqlite3_column_text(qry1, 1) ? (char *)sqlite3_column_text(qry1, 1) : "";
 	*datetime = (char *)sqlite3_column_text(qry1, 2);
 	unsigned index = sqlite3_column_int(qry1, 3);
@@ -946,14 +946,14 @@ unsigned DatabaseInterface::find_script_data(unsigned scriptID, std::string * id
 
 
 /**
- * reads all Betti tables from the files determined by the given order and ideal_type, updates the graphs table and all graphs of given order
+ * reads all Betti tables from the files determined by the given name, datetime and index, updates all graphs satisfying query_condition
 **/
-bool DatabaseInterface::insert_betti_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index) {
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *ideal + "Bettis TEXT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *ideal + "PD INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *ideal + "Reg INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *ideal + "Schenzel INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *ideal + "Extremals TEXT;").c_str(), 0, 0, 0);
+bool DatabaseInterface::insert_betti_data(std::string * name, std::string * query_condition, std::string * datetime, unsigned index) {
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Bettis TEXT;").c_str(), 0, 0, 0);
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "PD INT;").c_str(), 0, 0, 0);
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Reg INT;").c_str(), 0, 0, 0);
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Schenzel INT;").c_str(), 0, 0, 0);
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Extremals TEXT;").c_str(), 0, 0, 0);
 
 	sqlite3_stmt * qry2;
 	if (query_condition->empty())
@@ -977,7 +977,7 @@ bool DatabaseInterface::insert_betti_data(std::string * ideal, std::string * que
 		}
 	}
 
-	std::string statement = "UPDATE Graphs SET " + *ideal + "Bettis = ?, " + *ideal + "PD = ?, " + *ideal + "Reg = ?, " + *ideal + "Schenzel = ?, " + *ideal + "Extremals = ? WHERE graphID == ?;";
+	std::string statement = "UPDATE Graphs SET " + *name + "Bettis = ?, " + *name + "PD = ?, " + *name + "Reg = ?, " + *name + "Schenzel = ?, " + *name + "Extremals = ? WHERE graphID == ?;";
 	sqlite3_stmt * stmt1;
 
 	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt1, 0) != SQLITE_OK)
@@ -993,7 +993,7 @@ bool DatabaseInterface::insert_betti_data(std::string * ideal, std::string * que
 	unsigned count = 0;
 	for (unsigned k = 0; true; k++)
 	{
-		std::string filename = std::to_string(index) + "_" + *datetime + "_" + *ideal + "_" + std::to_string(k) + ".result";
+		std::string filename = std::to_string(index) + "_" + *datetime + "_" + *name + "_" + std::to_string(k) + ".result";
 		std::ifstream kFile(filename);
 
 		if (!kFile.is_open())
@@ -1058,8 +1058,8 @@ bool DatabaseInterface::insert_betti_data(std::string * ideal, std::string * que
 }
 
 
-bool DatabaseInterface::insert_hpoldeg_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index) {
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *ideal + "Hpoldeg INT;").c_str(), 0, 0, 0);
+bool DatabaseInterface::insert_hpoldeg_data(std::string * name, std::string * query_condition, std::string * datetime, unsigned index) {
+	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Hpoldeg INT;").c_str(), 0, 0, 0);
 
 	sqlite3_stmt * qry2;
 	if (query_condition->empty())
@@ -1083,7 +1083,7 @@ bool DatabaseInterface::insert_hpoldeg_data(std::string * ideal, std::string * q
 		}
 	}
 
-	std::string statement = "UPDATE Graphs SET " + *ideal + "Hpoldeg = ? WHERE graphID == ?;";
+	std::string statement = "UPDATE Graphs SET " + *name + "Hpoldeg = ? WHERE graphID == ?;";
 	sqlite3_stmt * stmt1;
 
 	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt1, 0) != SQLITE_OK)
@@ -1099,7 +1099,7 @@ bool DatabaseInterface::insert_hpoldeg_data(std::string * ideal, std::string * q
 	unsigned count = 0;
 	for (unsigned k = 0; true; k++)
 	{
-		std::string filename = std::to_string(index) + "_" + *datetime + "_" + *ideal + "_" + std::to_string(k) + ".result";
+		std::string filename = std::to_string(index) + "_" + *datetime + "_" + *name + "_" + std::to_string(k) + ".result";
 		std::ifstream kFile(filename);
 
 		if (!kFile.is_open())

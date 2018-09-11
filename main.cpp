@@ -35,8 +35,8 @@ int io_interface(DatabaseInterface * dbi) {
 		save_parse(dbi, &input);
 	else if (keyword == "import")
 		import_parse(dbi, &input);
-	else if (keyword == "label")
-		label_parse(dbi, &input);
+	else if (keyword == "type")
+		type_parse(dbi, &input);
 	else if (keyword == "results")
 		results_parse(dbi, &input);
 	else if (keyword == "scripts")
