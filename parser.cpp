@@ -58,7 +58,7 @@
 					"DELETE FROM Graphs WHERE NOT type IS NULL;\n"
 
 
-#define insert_text	"Enter 'import -[format] [file name]' to import all graphs from the file with the specified path (they are expected to be in the specified format).\n" \
+#define import_text	"Enter 'import -[format] [file name]' to import all graphs from the file with the specified path (they are expected to be in the specified format).\n" \
 					"\n" \
 					"--Example: import -list \"resources/graphs.txt\"\n" \
 					"\n" \
@@ -123,7 +123,7 @@
 						"     -hpoldeg : Script results will be expected to be degrees of h-polynomials (numerator of reduced Hilbert series).\n" \
 						"\n" \
 						"--Valid labeling arguments:\n" \
-						"     -closed : A kind of labeling with regards to which each graph is closed (does not make sense for non-closed graphs).\n" \
+						"     -closed : A kind of labeling with respect to which each graph is closed (does not make sense for non-closed graphs).\n" \
 						"\n" \
 						"--The 'batch size' must be a positive integer (default is 2500). It specifies the number of graphs to be written into each script.\n" \
 						"\n" \
@@ -252,7 +252,7 @@ int parse_unsigned(std::string * arg) {
 **/
 void help_parse(DatabaseInterface * dbi, std::string * input) {
 	bool sql = false;
-	bool insert = false;
+	bool import = false;
 	bool numbers = false;
 	bool label = false;
 	bool scripts = false;
@@ -275,8 +275,8 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 
 		if (arg == "sql")
 			sql = true;
-		else if (arg == "insert")
-			insert = true;
+		else if (arg == "import")
+			import = true;
 		else if (arg == "numbers")
 			numbers = true;
 		else if (arg == "label")
@@ -301,8 +301,8 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 	{
 		if (sql)
 			std::cout << sql_text << std::endl;
-		else if (insert)
-			std::cout << insert_text << std::endl;
+		else if (import)
+			std::cout << import_text << std::endl;
 		else if (numbers)
 			std::cout << numbers_text << std::endl;
 		else if (label)

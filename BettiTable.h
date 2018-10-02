@@ -19,7 +19,6 @@ public:
 
 	unsigned get_projective_dimension();
 	unsigned get_regularity();
-	unsigned get_schenzel_number();
 	std::vector<unsigned> get_extremal_betti_numbers();
 	std::string get_extremal_betti_numbers_as_string();
 

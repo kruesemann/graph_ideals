@@ -952,7 +952,6 @@ bool DatabaseInterface::insert_betti_data(std::string * name, std::string * quer
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Bettis TEXT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "PD INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Reg INT;").c_str(), 0, 0, 0);
-	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Schenzel INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Extremals TEXT;").c_str(), 0, 0, 0);
 
 	sqlite3_stmt * qry2;
@@ -977,7 +976,7 @@ bool DatabaseInterface::insert_betti_data(std::string * name, std::string * quer
 		}
 	}
 
-	std::string statement = "UPDATE Graphs SET " + *name + "Bettis = ?, " + *name + "PD = ?, " + *name + "Reg = ?, " + *name + "Schenzel = ?, " + *name + "Extremals = ? WHERE graphID == ?;";
+	std::string statement = "UPDATE Graphs SET " + *name + "Bettis = ?, " + *name + "PD = ?, " + *name + "Reg = ?, " + *name + "Extremals = ? WHERE graphID == ?;";
 	sqlite3_stmt * stmt1;
 
 	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt1, 0) != SQLITE_OK)
@@ -1026,9 +1025,8 @@ bool DatabaseInterface::insert_betti_data(std::string * name, std::string * quer
 			sqlite3_bind_text(stmt1, 1, b.convert_to_line().c_str(), -1, SQLITE_TRANSIENT);
 			sqlite3_bind_int(stmt1, 2, b.get_projective_dimension());
 			sqlite3_bind_int(stmt1, 3, b.get_regularity());
-			sqlite3_bind_int(stmt1, 4, b.get_schenzel_number());
-			sqlite3_bind_text(stmt1, 5, b.get_extremal_betti_numbers_as_string().c_str(), -1, SQLITE_TRANSIENT);
-			sqlite3_bind_int(stmt1, 6, sqlite3_column_int(qry2, 0));
+			sqlite3_bind_text(stmt1, 4, b.get_extremal_betti_numbers_as_string().c_str(), -1, SQLITE_TRANSIENT);
+			sqlite3_bind_int(stmt1, 5, sqlite3_column_int(qry2, 0));
 
 			sqlite3_step(stmt1);
 
@@ -1049,7 +1047,7 @@ bool DatabaseInterface::insert_betti_data(std::string * name, std::string * quer
 
 	if (count != 0)
 		PROGRESS(2, count << " graphs updated");
-
+	
 	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 	sqlite3_finalize(qry2);
 	sqlite3_finalize(stmt1);

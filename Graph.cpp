@@ -269,13 +269,11 @@ bool Graph::is_induced_path(int subset, unsigned subset_order) {
 	}
 
 	unsigned check_sum_degrees = 0;
-	std::vector<unsigned> deg1_vertices;
 
 	for (unsigned i = 0; i < subset_order; i++)
 	{
-		if (degrees[i] == 1)
-			deg1_vertices.push_back(vertices[i]);
-		else if (degrees[i] != 2)
+		if (degrees[i] != 1
+			&& degrees[i] != 2)
 		{
 				delete[] degrees;
 				delete[] vertices;
@@ -284,12 +282,19 @@ bool Graph::is_induced_path(int subset, unsigned subset_order) {
 		check_sum_degrees += degrees[i];
 	}
 
+	if (check_sum_degrees != (subset_order - 1) * 2)
+	{
+		delete[] vertices;
+		delete[] degrees;
+		return false;
+	}
+
 	bool connected = is_induced_connected(vertices, subset_order);
 
 	delete[] vertices;
 	delete[] degrees;
 
-	return connected && check_sum_degrees == (subset_order - 1) * 2;
+	return connected;
 }
 
 
@@ -388,7 +393,7 @@ bool Graph::is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned su
 
 
 /**
- * tests if the graph is closed with regards to given (perfect elimination) ordering, i.e.
+ * tests if the graph is closed with respect to given (perfect elimination) ordering, i.e.
  * {a,b},{i,j} in E(G) with a < b, i < j  =>  {a,i} in E(G) if b=j and {b,j} in E(G) if a=i
 **/
 bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
@@ -448,7 +453,7 @@ bool Graph::peo_swappable(unsigned * peo, unsigned * h, int t) {
 
 
 /**
-* swaps the vertices in given given perfect elimination ordering at index t and t+1 and tests if the graph is closed with regards to this ordering
+* swaps the vertices in given given perfect elimination ordering at index t and t+1 and tests if the graph is closed with respect to this ordering
 **/
 bool Graph::peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t) {
 	unsigned x = peo[t];
@@ -472,7 +477,7 @@ bool Graph::peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t
 
 /**
 * a special swap where the order of the t-th pair of simplicial vertices is swapped
-* also tests if the graph is closed with regards to the new labeling
+* also tests if the graph is closed with respect to the new labeling
 **/
 bool Graph::peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, int t) {
 	if (t != -1)
@@ -1505,7 +1510,7 @@ bool Graph::is_cone() {
 
 /**
  * expects the graph to be closed
- * returns a labeling with regards to which the graph is closed
+ * returns a labeling with respect to which the graph is closed
 **/
 unsigned * Graph::gen_closed_labeling() {
 	if (order < 1)

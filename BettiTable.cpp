@@ -198,23 +198,6 @@ unsigned BettiTable::get_regularity() {
 
 
 /**
- * returns the column number of the last non-zero element of the second row
-**/
-unsigned BettiTable::get_schenzel_number() {
-	if (table.size() / columns < 2)
-		return 1;
-
-	unsigned schenzel = 0;
-
-	for (; schenzel < columns && table[columns + schenzel] == 0; schenzel++);
-
-	for (; schenzel < columns && table[columns + schenzel] != 0; schenzel++);
-
-	return schenzel;
-}
-
-
-/**
  * returns a list of the Betti numbers where every other Betti number to the right and down from these is zero
 **/
 std::vector<unsigned> BettiTable::get_extremal_betti_numbers() {
