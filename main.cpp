@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 #include "parser.h"
+#include "test.h"
 
 
 //########## IO function ##########
@@ -72,6 +73,7 @@ int main(int argc, char* argv[]) {
 	dbi.create_scripts_table();
 	dbi.create_graphs_table();
 
-	help_parse(&dbi, &input);
+	complete_test(&dbi);
+
 	while (io_interface(&dbi));
 }

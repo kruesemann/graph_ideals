@@ -97,6 +97,7 @@ public:
 	Graph get_complement();
 
 	std::vector<unsigned> get_clique_numbers();
+	std::vector<unsigned> get_clique_number_naive();
 	std::vector<unsigned> get_detour_number();
 	std::vector<unsigned> get_extreme_degrees();
 	std::vector<unsigned> get_independence_numbers();
@@ -108,6 +109,7 @@ public:
 	bool is_chordal();
 	bool is_clawfree();
 	bool is_closed();
+	bool is_closed_naive();
 	bool is_cone();
 
 	unsigned * gen_closed_labeling();
