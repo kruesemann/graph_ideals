@@ -729,25 +729,28 @@ bool DatabaseInterface::create_graphs_table() {
 **/
 void DatabaseInterface::import_graphs(std::ifstream * file, bool (Graph::*Read_next_format)(std::ifstream * file)) {
 	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
-	
+
+	unsigned j = 0;
 	while (true)
 	{
 		unsigned i;
 		Graph g;
 		std::string statement = "INSERT INTO Graphs (graphOrder,graphSize,edges) VALUES ";
 
-		for (i = 0; i < 10000 && (g.*Read_next_format)(file); i++)
+		for (i = 0; i < 10 && (g.*Read_next_format)(file); i++)
 			statement += "(" + std::to_string(g.get_order()) + "," + std::to_string(g.get_size()) + ",'" + g.convert_to_string() + "'),";
 
 		statement.pop_back();
 
 		execute_SQL_statement(&statement);
 
-		PROGRESS(2, i << " graphs imported");
+		j += i;
 
-		if (i < 10000)
+		if (i < 10)
 			break;
 	}
+
+	PROGRESS(2, j << " graphs imported");
 
 	sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 }
