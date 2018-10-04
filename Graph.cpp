@@ -1,6 +1,7 @@
 #include "Graph.h"
 
 #include <list>
+#include <algorithm>
 
 
 //########## helper functions ##########
@@ -1200,6 +1201,50 @@ std::vector<unsigned> Graph::get_clique_numbers() {
 	return { clique_number, max_cliques.size() };
 }
 
+std::vector<std::vector<unsigned>> generate_subs(unsigned n) {
+	if (n == 1)
+		return { {}, { 1 } };
+
+	std::vector<std::vector<unsigned>> subs = generate_subs(n - 1);
+	unsigned size = subs.size();
+	for (unsigned i = 0; i < size; i++)
+	{
+		std::vector<unsigned> sub(subs[i]);
+		sub.push_back(n);
+		subs.push_back(sub);
+	}
+
+	return subs;
+}
+
+std::vector<unsigned> Graph::get_clique_number_naive() {
+	std::vector<std::vector<unsigned>> subs = generate_subs(order);
+	unsigned number = 1;
+
+	for (unsigned i = 0; i < subs.size(); i++)
+	{
+		unsigned size = subs[i].size();
+
+		if (number < size)
+		{
+			bool clique = true;
+			for (unsigned j = 0; clique && j < size; j++)
+			{
+				for (unsigned k = j + 1; clique && k < size; k++)
+				{
+					if (!adjacent(subs[i][j], subs[i][k]))
+						clique = false;
+				}
+			}
+
+			if (clique)
+				number = size;
+		}
+	}
+
+	return { number };
+}
+
 
 /**
  * returns the detour number, i.e., the length of the longest induce path
@@ -1492,6 +1537,32 @@ bool Graph::is_closed() {
 	delete[] b;
 
 	return closed;
+}
+
+
+bool Graph::is_closed_naive() {
+	unsigned * labeling = new unsigned[order];
+	unsigned * labeling_indices = new unsigned[order];
+
+	for (unsigned i = 0; i < order; i++)
+		labeling[i] = i + 1;
+
+	do
+	{
+		for (unsigned i = 0; i < order; i++)
+			labeling_indices[labeling[i] - 1] = i;
+
+		if (is_closed_wrt_labeling(labeling, labeling_indices))
+		{
+			delete[] labeling;
+			delete[] labeling_indices;
+			return true;
+		}
+	} while (std::next_permutation(labeling, labeling + order));
+
+	delete[] labeling;
+	delete[] labeling_indices;
+	return false;
 }
 
 
