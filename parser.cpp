@@ -68,12 +68,6 @@
 					"     -list : A readable, but inefficient format.\n" \
 					"             One graph per line, defined by graph order, followed by a space, then the list of edges.\n" \
 					"             Example : '3 {1,2},{2,3}'.\n" \
-					"     -adj  : A readable, but inefficient format selectable in Nauty.\n" \
-					"             Example : (empty line)\n" \
-					"                       Graph 1, order 3.\n" \
-					"                         1 : 3;\n" \
-					"                         2 : 3;\n" \
-					"                         3 : 1 2; \n" \
 					"\n" \
 					"--The 'file name' must specify a relative path to a correctly formatted text file. It can be entered with or without quotation marks '\"'.\n"
 
@@ -157,32 +151,32 @@
 					"--The argument '-g6' stands for the 'Graph6' format, an efficient format for storing undirected graphs.\n"
 
 
-#define NUMBER_FORMATS 3
+#define NUMBER_FORMATS 2
 typedef bool (Graph::*Read_next_format)(std::ifstream * file);
-const char* FORMATS[NUMBER_FORMATS] = { "g6", "list", "adj" };
-Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph::read_next_list_format, &Graph::read_next_adjacency_format };
+const char * FORMATS[NUMBER_FORMATS] = { "g6", "list" };
+Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph::read_next_list_format };
 
 #define NUMBER_NUMBERVECTORS 5
 typedef std::vector<unsigned>(Graph::*Graph_numbers) ();
-const char* NUMBERVECTORS[NUMBER_NUMBERVECTORS] = { "clique", "detour", "degree", "stable", "girth" };
+const char * NUMBERVECTORS[NUMBER_NUMBERVECTORS] = { "clique", "detour", "degree", "stable", "girth" };
 std::vector<const char*> COLUMNVECTORS[NUMBER_NUMBERVECTORS] = { { "cliqueNumber", "maxCliqueNumber" }, { "detourNumber" }, { "minDeg", "maxDeg" }, { "stableNumber", "maxStableNumber" }, { "girth" } };
 Graph_numbers GETTERS[NUMBER_NUMBERVECTORS] = { &Graph::get_clique_numbers, &Graph::get_detour_number, &Graph::get_extreme_degrees, &Graph::get_independence_numbers, &Graph::get_girth };
 
 #define NUMBER_TYPES 7
 typedef bool (Graph::*Graph_test) ();
-const char* TYPES[NUMBER_TYPES] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed", "cone" };
-const char* PRINT_NAMES[NUMBER_TYPES] = { "connected graphs", "cographs", "euler graphs", "chordal graphs", "claw-free graphs", "closed graphs", "cone graphs" };
+const char * TYPES[NUMBER_TYPES] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed", "cone" };
+const char * PRINT_NAMES[NUMBER_TYPES] = { "connected graphs", "cographs", "euler graphs", "chordal graphs", "claw-free graphs", "closed graphs", "cone graphs" };
 Graph_test TESTS[NUMBER_TYPES] = { &Graph::is_connected, &Graph::is_cograph, &Graph::is_euler, &Graph::is_chordal, &Graph::is_clawfree, &Graph::is_closed, &Graph::is_cone };
-const char* STD_CONDITIONS[NUMBER_TYPES] = { 0, 0, 0, 0, 0, "type LIKE '%chordal%' AND type LIKE '%claw-free%'", 0 };
+const char * STD_CONDITIONS[NUMBER_TYPES] = { 0, 0, 0, 0, 0, "type LIKE '%chordal%' AND type LIKE '%claw-free%'", 0 };
 
 #define NUMBER_LABELINGS 1
-typedef unsigned* (Graph::*Gen_labeling) ();
-const char* LABELINGS[NUMBER_LABELINGS] = { "closed" };
+typedef unsigned * (Graph::*Gen_labeling) ();
+const char * LABELINGS[NUMBER_LABELINGS] = { "closed" };
 Gen_labeling GENERATORS[NUMBER_LABELINGS] = { &Graph::gen_closed_labeling };
 
 #define NUMBER_RESULTS 2
 typedef bool (DatabaseInterface::*Result_inserter) (std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);
-const char* RESULTS[NUMBER_RESULTS] = { "betti", "hpoldeg" };
+const char * RESULTS[NUMBER_RESULTS] = { "betti", "hpoldeg" };
 Result_inserter INSERTERS[NUMBER_RESULTS] = { &DatabaseInterface::insert_betti_data, &DatabaseInterface::insert_hpoldeg_data };
 
 

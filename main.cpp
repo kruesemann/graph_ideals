@@ -59,7 +59,6 @@ int io_interface(DatabaseInterface * dbi) {
 int main(int argc, char* argv[]) {
 	std::string input = "";
 	DatabaseInterface dbi;
-	help_parse(&dbi, &input);
 
 	if (argc == 2)
 		dbi = DatabaseInterface(argv[1]);
@@ -76,5 +75,6 @@ int main(int argc, char* argv[]) {
 
 	complete_test(&dbi);
 
+	//help_parse(&dbi, &input);
 	while (io_interface(&dbi));
 }
