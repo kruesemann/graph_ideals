@@ -91,7 +91,6 @@ public:
 
 	unsigned get_size();
 
-	bool read_next_adjacency_format(std::ifstream * file);
 	bool read_next_g6_format(std::ifstream * file);
 	bool read_next_list_format(std::ifstream * file);
 
