@@ -68,12 +68,6 @@
 					"     -list : A readable, but inefficient format.\n" \
 					"             One graph per line, defined by graph order, followed by a space, then the list of edges.\n" \
 					"             Example : '3 {1,2},{2,3}'.\n" \
-					"     -adj  : A readable, but inefficient format selectable in Nauty.\n" \
-					"             Example : (empty line)\n" \
-					"                       Graph 1, order 3.\n" \
-					"                         1 : 3;\n" \
-					"                         2 : 3;\n" \
-					"                         3 : 1 2; \n" \
 					"\n" \
 					"--The 'file name' must specify a relative path to a correctly formatted text file. It can be entered with or without quotation marks '\"'.\n"
 
@@ -157,10 +151,10 @@
 					"--The argument '-g6' stands for the 'Graph6' format, an efficient format for storing undirected graphs.\n"
 
 
-#define NUMBER_FORMATS 3
+#define NUMBER_FORMATS 2
 typedef bool (Graph::*Read_next_format)(std::ifstream * file);
-const char* FORMATS[NUMBER_FORMATS] = { "g6", "list", "adj" };
-Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph::read_next_list_format, &Graph::read_next_adjacency_format };
+const char* FORMATS[NUMBER_FORMATS] = { "g6", "list" };
+Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph::read_next_list_format };
 
 #define NUMBER_NUMBERVECTORS 5
 typedef std::vector<unsigned>(Graph::*Graph_numbers) ();
