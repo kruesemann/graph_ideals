@@ -75,5 +75,6 @@ int main(int argc, char* argv[]) {
 
 	complete_test(&dbi);
 
+	//help_parse(&dbi, &input);
 	while (io_interface(&dbi));
 }

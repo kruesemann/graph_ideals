@@ -3,34 +3,33 @@
 #include <chrono>
 
 #define NUMBER_TESTS 23
-#define SAMPLESIZE 10000
 #define PASSES 10
 #define TESTFILE "graphs9.g6"
 
 const char * TESTS[NUMBER_TESTS] = {
-	"individual insert 1000",							//0
-	"single-transaction insert 1000",					//1
-	"single-transaction insert 1000000",				//2
-	"single-transaction batch insert 1000000",			//3
-	"individual update 1000",							//4
-	"single-transaction update 1000",					//5
-	"single-transaction update 1000000",				//6
-	"single-transaction prepared update 1000000",		//7
-	"connected BFS",									//8
-	"cograph naive",									//9
-	"euler naive",										//10
-	"chordal lexicographic BFS",						//11
-	"claw-free naive",									//12
-	"closed naive",										//13
-	"closed necessary condition",						//14
-	"closed iterating PEOs",							//15
-	"cone naive",										//16
-	"clique number naive",								//17
-	"clique numbers Bron-Kerbosch",						//18
-	"independence numbers complement Bron-Kerbosch",	//19
-	"detour number naive",								//20
-	"extremal numbers naive",							//21
-	"girth naive"										//22
+	"individual insert 1000",
+	"single-transaction insert 1000",
+	"single-transaction insert 1000000",
+	"single-transaction batch insert 1000000",
+	"individual update 1000",
+	"single-transaction update 1000",
+	"single-transaction update 1000000",
+	"single-transaction prepared update 1000000",
+	"connected BFS",
+	"cograph naive",
+	"euler naive",
+	"chordal lexicographic BFS",
+	"claw-free naive",
+	"closed naive",
+	"closed necessary condition",
+	"closed iterating PEOs",
+	"cone naive",
+	"clique number naive",
+	"clique numbers Bron-Kerbosch",
+	"independence numbers complement Bron-Kerbosch",
+	"detour number naive",
+	"extremal numbers naive",
+	"girth naive"
 };
 
 
@@ -166,8 +165,6 @@ void update_single_transaction_prepared(DatabaseInterface * dbi, unsigned sample
 
 
 void complete_test(DatabaseInterface * dbi) {
-	srand(time(NULL));
-
 	std::ifstream file;
 	std::chrono::duration<double, std::milli> t_total[NUMBER_TESTS];
 	std::chrono::system_clock::time_point t;
@@ -244,6 +241,7 @@ void complete_test(DatabaseInterface * dbi) {
 		t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 	}
 
+
 	std::cout << "\n\n\nTYPE LABELING/VALUE COMPUTATION\n\n";
 
 	// IMPORT TESTGRAPHS
@@ -254,7 +252,6 @@ void complete_test(DatabaseInterface * dbi) {
 	if (!open_testfile(&file))
 		return;
 
-	//import_testgraphs(dbi, &file);
 	dbi->import_graphs(&file, &Graph::read_next_g6_format);
 	file.close();
 
