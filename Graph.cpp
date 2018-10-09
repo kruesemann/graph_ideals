@@ -29,35 +29,6 @@ inline unsigned nth_power(unsigned x, unsigned n) {
 
 
 /**
- * refines the partitioning by splitting every partition depending on set,
- * used for generating a lexicographic labeling
-**/
-void refine(std::list<std::vector<unsigned>> * partitions, bool * set) {
-	std::list<std::vector<unsigned>>::iterator i;
-
-	for (i = partitions->begin(); i != partitions->end();)
-	{
-		std::vector<unsigned> intersection = {};
-		std::vector<unsigned> difference = {};
-
-		for (unsigned vertex : *i)
-		{
-			if (set[vertex - 1])
-				intersection.push_back(vertex);
-			else
-				difference.push_back(vertex);
-		}
-
-		i = partitions->erase(i);
-		if (!intersection.empty())
-			partitions->insert(i, intersection);
-		if (!difference.empty())
-			partitions->insert(i, difference);
-	}
-}
-
-
-/**
 * Brian Kernighan's algorithm to count set bits in integer (count ones in binary representation)
 **/
 inline unsigned count_set_bits(int n)
@@ -299,63 +270,56 @@ bool Graph::is_induced_path(int subset, unsigned subset_order) {
 
 
 /**
- * generates a lexicographic labeling on the vertices of the graph via lexicographic-breadth-first-search
+ * generates a lexicographic ordering on the vertices of the graph via lexicographic-breadth-first-search
 **/
-std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_labeling() {
+std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
 	if (order == 0)
 		return {};
 
 	std::list<std::vector<unsigned>> partitions;
-	std::vector<unsigned> initial_set;
+	std::vector<unsigned> initial_list;
 
-	bool * visited = new bool[order];
+	for (unsigned v = 1; v <= order; v++)
+		initial_list.push_back(v);
 
-	for (unsigned vertex = 1; vertex <= order; vertex++)
+	partitions.push_back(initial_list);
+
+	unsigned * ordering = new unsigned[order];
+	unsigned * ordering_indices = new unsigned[order];
+
+	for (int i = order - 1; i >= 0; i--)
 	{
-		if (vertex == 1)
-			partitions.push_front({ 1 });
-		else
-			initial_set.push_back(vertex);
+		unsigned v = partitions.back().back();
+		partitions.back().pop_back();
+		if (partitions.back().empty())
+			partitions.pop_back();
 
-		visited[vertex - 1] = false;
-	}
-	partitions.push_back(initial_set);
+		ordering[i] = v;
+		ordering_indices[v - 1] = i;
 
-	std::list<std::vector<unsigned>>::iterator i;
-	unsigned * labeling = new unsigned[order];
-
-	for (unsigned j = 0; j < order; j++)
-	{
-		i = partitions.begin();
-		unsigned vertex = i->back();
-		i->pop_back();
-		if (i->empty())
-			partitions.erase(i);
-
-		visited[vertex - 1] = true;
-		labeling[j] = vertex;
-
-		bool * set = new bool[order];
-		for (unsigned neighbour = 1; neighbour <= order; neighbour++)
+		std::list<std::vector<unsigned>>::iterator it;
+		for (it = partitions.begin(); it != partitions.end();)
 		{
-			if (!visited[neighbour - 1]
-				&& adjacent(vertex, neighbour))
-				set[neighbour - 1] = true;
-			else
-				set[neighbour - 1] = false;
-		}
+			std::vector<unsigned> intersection;
+			std::vector<unsigned> difference;
 
-		refine(&partitions, set);
-		delete[] set;
+			for (unsigned w : *it)
+			{
+				if (adjacent(v, w))
+					intersection.push_back(w);
+				else
+					difference.push_back(w);
+			}
+
+			it = partitions.erase(it);
+			if (!difference.empty())
+				partitions.insert(it, difference);
+			if (!intersection.empty())
+				partitions.insert(it, intersection);
+		}
 	}
 
-	unsigned * labeling_indices = new unsigned[order];
-
-	for (unsigned j = 0; j < order; j++)
-		labeling_indices[labeling[j] - 1] = j;
-
-	delete[] visited;
-	return std::pair<unsigned *, unsigned *>(labeling, labeling_indices);
+	return { ordering, ordering_indices };
 }
 
 
@@ -638,7 +602,7 @@ std::pair<unsigned, unsigned> Graph::get_simplicial_pair(bool * visited) {
 
 
 /**
-* generates an initial perfect elimination ordering via successive elimination of pairs of simplicial vertices
+* generates an initial perfect elimination ordering via consecutive elimination of pairs of simplicial vertices
 **/
 void Graph::gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b) {
 	bool * visited = new bool[order];
@@ -1353,34 +1317,35 @@ bool Graph::is_chordal() {
 	if (order < 4)
 		return true;
 
-	std::pair<unsigned *, unsigned *> labeling = gen_lexicographic_labeling();
+	std::pair<unsigned *, unsigned *> ordering = gen_lexicographic_ordering();
 
-	for (unsigned vertex = 1; vertex <= order; vertex++)
+	for (unsigned v = 1; v <= order; v++)
 	{
-		int nearest_prior_neighbour;
-		for (nearest_prior_neighbour = (int)(labeling.second[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
+		unsigned parent_index = ordering.second[v - 1] + 1;
+		while (parent_index < order)
 		{
-			if (adjacent(vertex, labeling.first[nearest_prior_neighbour]))
+			if (adjacent(v, ordering.first[parent_index]))
 				break;
+			parent_index++;
 		}
 
-		if (nearest_prior_neighbour >= 0)
+		if (parent_index >= order)
+			continue;
+
+		for (unsigned w_index = order - 1; w_index > parent_index; w_index--)
 		{
-			for (int prior_neighbour = 0; prior_neighbour < nearest_prior_neighbour; prior_neighbour++)
+			if (adjacent(v, ordering.first[w_index])
+				&& !adjacent(ordering.first[parent_index], ordering.first[w_index]))
 			{
-				if (adjacent(vertex, labeling.first[prior_neighbour])
-					&& !adjacent(labeling.first[nearest_prior_neighbour], labeling.first[prior_neighbour]))
-				{
-					delete[] labeling.first;
-					delete[] labeling.second;
-					return false;
-				}
+				delete[] ordering.first;
+				delete[] ordering.second;
+				return false;
 			}
 		}
 	}
 
-	delete[] labeling.first;
-	delete[] labeling.second;
+	delete[] ordering.first;
+	delete[] ordering.second;
 	return true;
 }
 

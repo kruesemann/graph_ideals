@@ -17,7 +17,7 @@ private:
 	bool is_induced_connected(unsigned * vertices, unsigned subset_order);
 	bool is_induced_path(int subset, unsigned subset_order);
 
-	std::pair<unsigned *, unsigned *> gen_lexicographic_labeling();
+	std::pair<unsigned *, unsigned *> gen_lexicographic_ordering();
 
 	bool is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned subset_nr);
 
