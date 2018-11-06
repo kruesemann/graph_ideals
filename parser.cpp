@@ -20,7 +20,7 @@
 					"--Valid 'keyword' arguments:\n" \
 					"     sql     : shows a sample of useful SQL queries instead\n" \
 					"     import  : shows a description of the 'import' functionality\n" \
-					"     numbers : shows a description of the 'numbers' functionality\n" \
+					"     values  : shows a description of the 'values' functionality\n" \
 					"     type    : shows a description of the 'type' functionality\n" \
 					"     scripts : shows a description of the 'scripts' functionality\n" \
 					"     results : shows a description of the 'results' functionality\n" \
@@ -72,27 +72,27 @@
 					"--The 'file name' must specify a relative path to a correctly formatted text file. It can be entered with or without quotation marks '\"'.\n"
 
 
-#define numbers_text	"Enter 'numbers (-allexcept) (-[numbers1] -[numbers2] ...) (-where [condition])' to compute all specified numbers of the graphs in the database.\n" \
-						"\n" \
-						"--Example: numbers -clique -where \"graphOrder == 4\"\n" \
-						"\n" \
-						"--The argument '-allexcept' is used to compute all numbers except the ones specified. It can be used to compute all numbers.\n" \
-						"\n" \
-						"--Valid number arguments:\n" \
-						"     -clique : Computes the clique number and the number of maximal cliques of each graph.\n" \
-						"     -detour : Computes the detour number of each graph, i.e., the length of the longest induced path.\n" \
-						"     -degree : Computes the minimum and maximum degree of vertices in each graph.\n" \
-						"     -stable : Computes the independence number and the number of maximal independent (or stable) sets of each graph.\n" \
-						"     -girth  : Computes the girth of each graph, i.e., the minimum length of a cycle (or 0 if there are none).\n" \
-						"\n" \
-						"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be updated.\n"
+#define values_text	"Enter 'values (-allexcept) (-[valueSet1] -[valueSet2] ...) (-where [condition])' to compute all specified value sets of the graphs in the database.\n" \
+					"\n" \
+					"--Example: values -clique -where \"graphOrder == 4\"\n" \
+					"\n" \
+					"--The argument '-allexcept' is used to compute all value sets except the ones specified. It can be used to compute all value sets.\n" \
+					"\n" \
+					"--Valid value set arguments:\n" \
+					"     -clique       : Computes the clique number and the number of maximal cliques of each graph.\n" \
+					"     -detour       : Computes the detour number of each graph, i.e., the length of the longest induced path.\n" \
+					"     -degree       : Computes the minimum and maximum degree of vertices in each graph.\n" \
+					"     -independence : Computes the independence number and the number of maximal independent (or stable) sets of each graph.\n" \
+					"     -girth        : Computes the girth of each graph, i.e., the minimum length of a cycle (or 0 if there are none).\n" \
+					"\n" \
+					"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be updated.\n"
 
 
-#define type_text	"Enter 'type (-allexcept) (-[type1] -[type2] ...) (-where [condition])' to label all graphs of the specified types in the database as such.\n" \
+#define type_text	"Enter 'type (-allexcept) (-[type1] -[type2] ...) (-where [condition])' to classify all graphs of the specified types in the database as such.\n" \
 					"\n" \
 					"--Example: type -allexcept -chordal -closed -where \"graphOrder < 5\"\n" \
 					"\n" \
-					"--The argument '-allexcept' is used to label all types except the ones specified. It can be used to label all types.\n" \
+					"--The argument '-allexcept' is used to classify all types except the ones specified. It can be used to classify all types.\n" \
 					"\n" \
 					"--Valid type arguments:\n" \
 					"     -connected\n" \
@@ -100,10 +100,10 @@
 					"     -euler\n" \
 					"     -chordal\n" \
 					"     -claw-free\n" \
-					"     -closed      (This requires the chordal and claw-free graphs to be labeled first.)\n" \
+					"     -closed      (This requires the chordal and claw-free graphs to be classified first.)\n" \
 					"     -cone\n" \
 					"\n" \
-					"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be labeled.\n"
+					"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be classified.\n"
 
 
 #define scripts_text	"Enter 'scripts [name] -[result type] (-[labeling]) (-[batch size]) ([template name]) (-where [condition])' to generate Macaulay2 scripts based on a template.\n" \
@@ -156,11 +156,11 @@ typedef bool (Graph::*Read_next_format)(std::ifstream * file);
 const char * FORMATS[NUMBER_FORMATS] = { "g6", "list" };
 Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph::read_next_list_format };
 
-#define NUMBER_NUMBERVECTORS 5
-typedef std::vector<unsigned>(Graph::*Graph_numbers) ();
-const char * NUMBERVECTORS[NUMBER_NUMBERVECTORS] = { "clique", "detour", "degree", "stable", "girth" };
-std::vector<const char *> COLUMNVECTORS[NUMBER_NUMBERVECTORS] = { { "cliqueNumber", "maxCliqueNumber" }, { "detourNumber" }, { "minDeg", "maxDeg" }, { "stableNumber", "maxStableNumber" }, { "girth" } };
-Graph_numbers GETTERS[NUMBER_NUMBERVECTORS] = { &Graph::get_clique_numbers, &Graph::get_detour_number, &Graph::get_extreme_degrees, &Graph::get_independence_numbers, &Graph::get_girth };
+#define NUMBER_VALUESETS 5
+typedef std::vector<unsigned>(Graph::*Graph_values) ();
+const char * VALUESETS[NUMBER_VALUESETS] = { "clique", "detour", "degree", "independence", "girth" };
+std::vector<const char *> COLUMNSETS[NUMBER_VALUESETS] = { { "cliqueNumber", "#maxCliques" }, { "detourNumber" }, { "minDeg", "maxDeg" }, { "independenceNr", "#maxIndependentSets" }, { "girth" } };
+Graph_values GETTERS[NUMBER_VALUESETS] = { &Graph::get_clique_numbers, &Graph::get_detour_number, &Graph::get_extreme_degrees, &Graph::get_independence_numbers, &Graph::get_girth };
 
 #define NUMBER_TYPES 7
 typedef bool (Graph::*Graph_test) ();
@@ -247,8 +247,8 @@ int parse_unsigned(std::string * arg) {
 void help_parse(DatabaseInterface * dbi, std::string * input) {
 	bool sql = false;
 	bool import = false;
-	bool numbers = false;
-	bool label = false;
+	bool values = false;
+	bool type = false;
 	bool scripts = false;
 	bool result = false;
 	bool show = false;
@@ -271,10 +271,10 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 			sql = true;
 		else if (arg == "import")
 			import = true;
-		else if (arg == "numbers")
-			numbers = true;
-		else if (arg == "label")
-			label = true;
+		else if (arg == "values")
+			values = true;
+		else if (arg == "type")
+			type = true;
 		else if (arg == "scripts")
 			scripts = true;
 		else if (arg == "results")
@@ -297,9 +297,9 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 			std::cout << sql_text << std::endl;
 		else if (import)
 			std::cout << import_text << std::endl;
-		else if (numbers)
-			std::cout << numbers_text << std::endl;
-		else if (label)
+		else if (values)
+			std::cout << values_text << std::endl;
+		else if (type)
 			std::cout << type_text << std::endl;
 		else if (scripts)
 			std::cout << scripts_text << std::endl;
@@ -384,15 +384,15 @@ void import_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
-* parses the arguments for numbers
+* parses the arguments for values
 **/
-void numbers_parse(DatabaseInterface * dbi, std::string * input) {
+void values_parse(DatabaseInterface * dbi, std::string * input) {
 	bool allexcept = false;
 	std::vector<bool> to_be_computed;
 	bool condition = false;
 	std::string query_condition = "";
 
-	for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+	for (int i = 0; i < NUMBER_VALUESETS; i++)
 		to_be_computed.push_back(false);
 
 	while (!input->empty())
@@ -403,7 +403,7 @@ void numbers_parse(DatabaseInterface * dbi, std::string * input) {
 		{
 			if (input->empty())
 				break;
-			FAIL("Computing numbers", "");
+			FAIL("Computing values", "");
 			return;
 		}
 
@@ -429,9 +429,9 @@ void numbers_parse(DatabaseInterface * dbi, std::string * input) {
 			}
 			else
 			{
-				for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+				for (int i = 0; i < NUMBER_VALUESETS; i++)
 				{
-					if (arg == "-" + std::string(NUMBERVECTORS[i]))
+					if (arg == "-" + std::string(VALUESETS[i]))
 					{
 						to_be_computed[i] = true;
 						match = true;
@@ -443,7 +443,7 @@ void numbers_parse(DatabaseInterface * dbi, std::string * input) {
 			if (!match)
 			{
 				INVALID_ARG();
-				FAIL("Computing numbers", "");
+				FAIL("Computing values", "");
 				return;
 			}
 		}
@@ -451,16 +451,16 @@ void numbers_parse(DatabaseInterface * dbi, std::string * input) {
 
 	if (allexcept)
 	{
-		for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+		for (int i = 0; i < NUMBER_VALUESETS; i++)
 			to_be_computed[i] = !to_be_computed[i];
 	}
 
-	for (int i = 0; i < NUMBER_NUMBERVECTORS; i++)
+	for (int i = 0; i < NUMBER_VALUESETS; i++)
 	{
 		if (to_be_computed[i])
 		{
-			PROGRESS(1, "computing " << NUMBERVECTORS[i] << " numbers");
-			dbi->update_numbers(GETTERS[i], &(COLUMNVECTORS[i]), query_condition.empty() ? 0 : query_condition.c_str());
+			PROGRESS(1, "computing " << VALUESETS[i] << " values");
+			dbi->update_values(GETTERS[i], &(COLUMNSETS[i]), query_condition.empty() ? 0 : query_condition.c_str());
 		}
 	}
 }
@@ -471,12 +471,12 @@ void numbers_parse(DatabaseInterface * dbi, std::string * input) {
 **/
 void type_parse(DatabaseInterface * dbi, std::string * input) {
 	bool allexcept = false;
-	std::vector<bool> to_be_labeled;
+	std::vector<bool> to_be_classified;
 	bool condition = false;
 	std::string query_condition = "";
 
 	for (int i = 0; i < NUMBER_TYPES; i++)
-		to_be_labeled.push_back(false);
+		to_be_classified.push_back(false);
 
 	while (!input->empty())
 	{
@@ -486,7 +486,7 @@ void type_parse(DatabaseInterface * dbi, std::string * input) {
 		{
 			if (input->empty())
 				break;
-			FAIL("Labeling graphs", "");
+			FAIL("Classifying graphs", "");
 			return;
 		}
 
@@ -516,7 +516,7 @@ void type_parse(DatabaseInterface * dbi, std::string * input) {
 				{
 					if (arg == "-" + std::string(TYPES[i]))
 					{
-						to_be_labeled[i] = true;
+						to_be_classified[i] = true;
 						match = true;
 						break;
 					}
@@ -526,7 +526,7 @@ void type_parse(DatabaseInterface * dbi, std::string * input) {
 			if (!match)
 			{
 				INVALID_ARG();
-				FAIL("Labeling graphs", "");
+				FAIL("Classifying graphs", "");
 				return;
 			}
 		}
@@ -535,14 +535,14 @@ void type_parse(DatabaseInterface * dbi, std::string * input) {
 	if (allexcept)
 	{
 		for (int i = 0; i < NUMBER_TYPES; i++)
-			to_be_labeled[i] = !to_be_labeled[i];
+			to_be_classified[i] = !to_be_classified[i];
 	}
 
 	for (int i = 0; i < NUMBER_TYPES; i++)
 	{
-		if (to_be_labeled[i])
+		if (to_be_classified[i])
 		{
-			PROGRESS(1, "labeling " << PRINT_NAMES[i]);
+			PROGRESS(1, "classifying " << PRINT_NAMES[i]);
 
 			if (STD_CONDITIONS[i])
 				dbi->update_type(TESTS[i], TYPES[i], query_condition.empty() ? STD_CONDITIONS[i] : (std::string(STD_CONDITIONS[i]) + " AND " + query_condition).c_str());

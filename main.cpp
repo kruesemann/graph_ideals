@@ -42,7 +42,7 @@ int io_interface(DatabaseInterface * dbi) {
 	else if (keyword == "scripts")
 		script_parse(dbi, &input);
 	else if (keyword == "numbers")
-		numbers_parse(dbi, &input);
+		values_parse(dbi, &input);
 	else
 		dbi->execute_SQL_statement(&(keyword + " " + input));
 
@@ -55,8 +55,7 @@ int io_interface(DatabaseInterface * dbi) {
  * opens the given database (if none is specified it opens 'Graphs.db'),
  * gets the interaction key via io_interface and takes action based on the key
 **/
-int main(int argc, char* argv[]) {
-	std::string input = "";
+int main(int argc, char * argv[]) {
 	DatabaseInterface dbi;
 
 	if (argc == 2)
@@ -72,6 +71,6 @@ int main(int argc, char* argv[]) {
 	dbi.create_scripts_table();
 	dbi.create_graphs_table();
 
-	help_parse(&dbi, &input);
+	help_parse(&dbi, &std::string(""));
 	while (io_interface(&dbi));
 }
