@@ -12,16 +12,11 @@ private:
 
 	unsigned bron_kerbosch_pivot(std::vector<std::vector<unsigned>> * max_cliques, unsigned clique_number, std::vector<unsigned> * include_all, std::vector<unsigned> * include_some, std::vector<unsigned> * include_none);
 
-	std::vector<unsigned> gen_order_4_subsets();
-	bool is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned subset_nr);
 	bool is_induced_connected(unsigned * vertices, unsigned subset_order);
 	bool is_induced_path(int subset, unsigned subset_order);
+	bool is_induced_claw(int subset);
 
 	std::pair<unsigned *, unsigned *> gen_lexicographic_ordering();
-
-	bool is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned subset_nr);
-
-	bool is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices);
 
 	bool is_simplicial(unsigned vertex, bool * visited);
 
@@ -84,7 +79,7 @@ public:
 	unsigned get_order();
 
 	std::string convert_to_string();
-	std::string convert_to_string_wrt_labeling(unsigned * ordering_indices);
+	std::string convert_to_string_wrt_labeling(unsigned * labeling);
 	std::string convert_to_g6_format();
 
 	bool adjacent(unsigned v, unsigned w);
@@ -102,6 +97,8 @@ public:
 	std::vector<unsigned> get_extreme_degrees();
 	std::vector<unsigned> get_independence_numbers();
 	std::vector<unsigned> get_girth();
+
+	bool is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices);
 
 	bool is_connected();
 	bool is_cograph();

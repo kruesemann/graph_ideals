@@ -412,7 +412,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	{
 		if (sqlite3_prepare_v2(database, ("SELECT graphOrder,edges FROM Graphs WHERE " + std::string(query_condition)).c_str(), -1, &qry, 0) != SQLITE_OK)
 		{
-			FAIL("Generating M2 scripts", "SQL error: '" << qry << "' is an invalid query.");
+			FAIL("Generating M2 scripts", "SQL error: '" << "SELECT graphOrder,edges FROM Graphs WHERE " << query_condition << "' is an invalid query.");
 			sqlite3_finalize(qry);
 			return;
 		}
@@ -421,7 +421,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	{
 		if (sqlite3_prepare_v2(database, "SELECT graphOrder,edges FROM Graphs", -1, &qry, 0) != SQLITE_OK)
 		{
-			FAIL("Generating M2 scripts", "SQL error: '" << qry << "' is an invalid query.");
+			FAIL("Generating M2 scripts", "SQL error: 'SELECT graphOrder,edges FROM Graphs' is an invalid query.");
 			sqlite3_finalize(qry);
 			return;
 		}
@@ -450,7 +450,6 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	{
 		std::string script = "G = {\n";
 		std::string edges;
-		std::string empty_edge_indices = "";
 
 		for (i = 0; i < batch_size && sqlite3_step(qry) == SQLITE_ROW; i++)
 		{
@@ -465,9 +464,6 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 			}
 			else
 				script += g.convert_to_string() + ",\n";
-
-			if (edges == "{}")
-				empty_edge_indices += std::to_string(i) + ",";
 		}
 
 
@@ -490,14 +486,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 
 		kFile.close();
 		
-		if (empty_edge_indices.empty())
-			PROGRESS(2, "generated '" << filename << "'");
-		else
-		{
-			empty_edge_indices.pop_back();
-			PROGRESS(2, "generated '" << filename << "'.");
-			WARNING("Note, that there are no edges in graph(s) " << empty_edge_indices << " in this file. Some Macaulay2 commands might not work here!");
-		}
+		PROGRESS(2, "generated '" << filename << "'");
 
 		if (i < batch_size)
 			break;
@@ -513,12 +502,12 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 
 
 	std::string columns = "INSERT INTO Scripts (name,";
-	std::string values = "datetime,resultType) VALUES ('" + *name + "',";
+	std::string values = "datetime,resultType) VALUES (\"" + *name + "\",";
 
 	if (labeling_name)
 	{
 		columns += "labeling,";
-		values += "'" + std::string(labeling_name) + "',";
+		values += "\"" + std::string(labeling_name) + "\",";
 	}
 
 	columns += "batchsize,";
@@ -527,10 +516,10 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	if (query_condition)
 	{
 		columns += "condition,";
-		values += "'" + std::string(query_condition) + "',";
+		values += "\"" + std::string(query_condition) + "\",";
 	}
 
-	values += "'" + datetime + "'," + std::to_string(index) + ")";
+	values += "\"" + datetime + "\"," + std::to_string(index) + ")";
 
 	execute_SQL_statement(&(columns + values));
 }
@@ -769,7 +758,7 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 	if (sqlite3_prepare_v2(database, query.c_str(), -1, &qry, 0) != SQLITE_OK)
 	{
 		SQL_ERROR(query);
-		FAIL("Labeling type", "");
+		FAIL("Classifying type", "");
 		sqlite3_finalize(qry);
 		return false;
 	}
@@ -779,7 +768,7 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 	if (sqlite3_prepare_v2(database, "UPDATE Graphs SET type = ? WHERE graphID == ?", -1, &stmt, 0) != SQLITE_OK)
 	{
 		SQL_ERROR("UPDATE Graphs SET type = ? WHERE graphID == ?");
-		FAIL("Labeling type", "");
+		FAIL("Classifying type", "");
 		sqlite3_finalize(qry);
 		sqlite3_finalize(stmt);
 		return false;
@@ -818,7 +807,7 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 		PROGRESS(2, i - 1 << " graphs tested");
 	else
 	{
-		FAIL("Labeling type", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
+		FAIL("Classifying type", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
 		return false;
 	}
 
@@ -826,10 +815,10 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 }
 
 
-bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbers)(), std::vector<const char *> * columns, const char * query_condition) {
+bool DatabaseInterface::update_values(std::vector<unsigned>(Graph::*graph_values)(), std::vector<const char *> * columns, const char * query_condition) {
 	if (columns->size() == 0)
 	{
-		FAIL("Computing numbers", "No numbers specified.");
+		FAIL("Computing values", "No value set specified.");
 		return false;
 	}
 
@@ -849,7 +838,7 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 	if (sqlite3_prepare_v2(database, query.c_str(), -1, &qry, 0) != SQLITE_OK)
 	{
 		SQL_ERROR(query);
-		FAIL("Computing numbers", "");
+		FAIL("Computing values", "");
 		sqlite3_finalize(qry);
 		return false;
 	}
@@ -864,7 +853,7 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 	if (sqlite3_prepare_v2(database, statement.c_str(), -1, &stmt, 0) != SQLITE_OK)
 	{
 		SQL_ERROR(statement);
-		FAIL("Computing numbers", "");
+		FAIL("Computing values", "");
 		sqlite3_finalize(qry);
 		sqlite3_finalize(stmt);
 		return false;
@@ -877,21 +866,21 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 		std::string edges = ((char *)sqlite3_column_text(qry, 2));
 		Graph g(sqlite3_column_int(qry, 1), &edges);
 
-		std::vector<unsigned> numbers = (g.*graph_numbers)();
+		std::vector<unsigned> values = (g.*graph_values)();
 
-		if (numbers.size() != columns->size())
+		if (values.size() != columns->size())
 		{
-			FAIL("Computing numbers", "There are not the same amounts of numbers and columns.");
+			FAIL("Computing values", "There are not the same amounts of values and columns.");
 			sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 			sqlite3_finalize(qry);
 			sqlite3_finalize(stmt);
 			return false;
 		}
 
-		for (unsigned j = 0; j < numbers.size(); j++)
-			sqlite3_bind_int(stmt, j + 1, numbers[j]);
+		for (unsigned j = 0; j < values.size(); j++)
+			sqlite3_bind_int(stmt, j + 1, values[j]);
 
-		sqlite3_bind_int(stmt, numbers.size() + 1, sqlite3_column_int(qry, 0));
+		sqlite3_bind_int(stmt, values.size() + 1, sqlite3_column_int(qry, 0));
 
 		sqlite3_step(stmt);
 
@@ -913,7 +902,7 @@ bool DatabaseInterface::update_numbers(std::vector<unsigned>(Graph::*graph_numbe
 		PROGRESS(2, i - 1 << " graphs updated");
 	else
 	{
-		FAIL("Computing numbers", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
+		FAIL("Computing values", "Unable to find any graphs satisfying the condition of the query: '" << query << "'.");
 		return false;
 	}
 
@@ -952,6 +941,11 @@ unsigned DatabaseInterface::find_script_data(unsigned scriptID, std::string * na
  * reads all Betti tables from the files determined by the given name, datetime and index, updates all graphs satisfying query_condition
 **/
 bool DatabaseInterface::insert_betti_data(std::string * name, std::string * query_condition, std::string * datetime, unsigned index) {
+	std::string column_name = *name;
+	size_t cut_index = column_name.find_first_of(' ');
+	while (cut_index < column_name.length() - 1)
+		column_name = column_name.substr(0, cut_index) + column_name.substr(cut_index + 1, std::string::npos);
+
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Bettis TEXT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "PD INT;").c_str(), 0, 0, 0);
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Reg INT;").c_str(), 0, 0, 0);

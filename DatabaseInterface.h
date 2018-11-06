@@ -25,7 +25,7 @@ public:
 	DatabaseInterface(const char * database_file_name) : number_columns(0), number_rows(0), view_columns{}, view_contents{}, column_widths{} {
 		if (sqlite3_open(database_file_name, &database))
 		{
-			std::cout << "Could not open database: " << sqlite3_errmsg(database) << std::endl;
+			std::cout << "Unable to open database: " << sqlite3_errmsg(database) << std::endl;
 			database = 0;
 		}
 	}
@@ -66,7 +66,7 @@ public:
 	void import_graphs(std::ifstream * file, bool (Graph::*Read_next_format)(std::ifstream * file));
 
 	bool update_type(bool (Graph::*graph_test)(), const char * type, const char * query_condition);
-	bool update_numbers(std::vector<unsigned>(Graph::*graph_numbers)(), std::vector<const char *> * columns, const char * query_condition);
+	bool update_values(std::vector<unsigned>(Graph::*graph_values)(), std::vector<const char *> * columns, const char * query_condition);
 
 	unsigned find_script_data(unsigned scriptID, std::string * ideal, std::string * query_condition, std::string * datetime);
 	bool insert_betti_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);

@@ -109,66 +109,6 @@ unsigned Graph::bron_kerbosch_pivot(std::vector<std::vector<unsigned>> * max_cli
 
 
 /**
- * generates all order-4-subsets of vertices
-**/
-std::vector<unsigned> Graph::gen_order_4_subsets() {
-	std::vector<unsigned> subs = {};
-
-	for (unsigned i = 1; i <= order - 3; i++)
-	{
-		for (unsigned j = i + 1; j <= order - 2; j++)
-		{
-			for (unsigned k = j + 1; k <= order - 1; k++)
-			{
-				for (unsigned m = k + 1; m <= order; m++)
-				{
-					subs.push_back(i);
-					subs.push_back(j);
-					subs.push_back(k);
-					subs.push_back(m);
-				}
-			}
-		}
-	}
-
-	return subs;
-}
-
-
-/**
- * tests if a given order-4-subset of vertices is an induced path
-**/
-bool Graph::is_induced_path(std::vector<unsigned> * order_4_subsets, unsigned subset_nr) {
-	unsigned degrees[] = { 0, 0, 0, 0 };
-	unsigned subset[] = { order_4_subsets->at(subset_nr * 4), order_4_subsets->at(subset_nr * 4 + 1), order_4_subsets->at(subset_nr * 4 + 2), order_4_subsets->at(subset_nr * 4 + 3) };
-
-	for (unsigned i = 0; i < 4; i++)
-	{
-		for (unsigned j = i + 1; j < 4; j++)
-		{
-			if (adjacent(subset[i], subset[j]))
-			{
-				degrees[i]++;
-				degrees[j]++;
-			}
-		}
-	}
-
-	unsigned check_sum_degrees = 0;
-
-	for (unsigned i = 0; i < 4; i++)
-	{
-		if (degrees[i] != 1
-			&& degrees[i] != 2)
-			return false;
-		check_sum_degrees += degrees[i];
-	}
-
-	return check_sum_degrees == 6;
-}
-
-
-/**
  * tests if a given subset in binary representation of order subset_order is an induced connected subgraph via depth-first-search
 **/
 bool Graph::is_induced_connected(unsigned * vertices, unsigned subset_order) {
@@ -261,12 +201,60 @@ bool Graph::is_induced_path(int subset, unsigned subset_order) {
 		return false;
 	}
 
-	bool connected = is_induced_connected(vertices, subset_order);
+	bool connected = subset_order <= 4 || is_induced_connected(vertices, subset_order);
 
 	delete[] vertices;
 	delete[] degrees;
 
 	return connected;
+}
+
+
+/**
+* tests if a given order-4-subset of vertices is an induced claw
+**/
+bool Graph::is_induced_claw(int subset) {
+	unsigned * degrees = new unsigned[4];
+	unsigned * vertices = new unsigned[4];
+
+	for (unsigned i = 0, v = 1; i < 4; i++, v++)
+	{
+		degrees[i] = 0;
+		while (!(subset & (1 << (order - v))))
+			v++;
+		vertices[i] = v;
+	}
+
+	for (unsigned i = 0; i < 4; i++)
+	{
+		for (unsigned j = i + 1; j < 4; j++)
+		{
+			if (adjacent(vertices[i], vertices[j]))
+			{
+				degrees[i]++;
+				degrees[j]++;
+			}
+		}
+	}
+
+	delete[] vertices;
+
+	unsigned check_sum_degrees = 0;
+
+	for (unsigned i = 0; i < 4; i++)
+	{
+		if (degrees[i] != 1
+			&& degrees[i] != 3)
+		{
+			delete[] degrees;
+			return false;
+		}
+		check_sum_degrees += degrees[i];
+	}
+
+	delete[] degrees;
+
+	return check_sum_degrees == 6;
 }
 
 
@@ -325,85 +313,6 @@ std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
 
 
 /**
-* tests if a given order-4-subset of vertices is an induced claw
-**/
-bool Graph::is_induced_claw(std::vector<unsigned> * order_4_subsets, unsigned subset_nr) {
-	unsigned degrees[] = { 0, 0, 0, 0 };
-	unsigned subset[] = { order_4_subsets->at(subset_nr * 4), order_4_subsets->at(subset_nr * 4 + 1), order_4_subsets->at(subset_nr * 4 + 2), order_4_subsets->at(subset_nr * 4 + 3) };
-
-	for (unsigned i = 0; i < 4; i++)
-	{
-		for (unsigned j = i + 1; j < 4; j++)
-		{
-			if (adjacent(subset[i], subset[j]))
-			{
-				degrees[i]++;
-				degrees[j]++;
-			}
-		}
-	}
-
-	unsigned check_sum_degrees = 0;
-
-	for (unsigned i = 0; i < 4; i++)
-	{
-		if (degrees[i] != 1
-			&& degrees[i] != 3)
-			return false;
-		check_sum_degrees += degrees[i];
-	}
-
-	return check_sum_degrees == 6;
-}
-
-
-/**
- * tests if the graph is closed with respect to given (perfect elimination) ordering, i.e.
- * {a,b},{i,j} in E(G) with a < b, i < j  =>  {a,i} in E(G) if b=j and {b,j} in E(G) if a=i
-**/
-bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
-	for (unsigned vertex = 1; vertex <= order; vertex++)
-	{
-		int nearest_prior_neighbour;
-		for (nearest_prior_neighbour = (int)(peo_indices[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
-		{
-			if (adjacent(vertex, peo[nearest_prior_neighbour]))
-				break;
-		}
-
-		if (nearest_prior_neighbour >= 0)
-		{
-			for (int prior_neighbour = 0; prior_neighbour < nearest_prior_neighbour; prior_neighbour++)
-			{
-				if (adjacent(vertex, peo[prior_neighbour])
-					&& !adjacent(peo[nearest_prior_neighbour], peo[prior_neighbour]))
-					return false;
-			}
-		}
-
-		int nearest_later_neighbour;
-		for (nearest_later_neighbour = (int)(peo_indices[vertex - 1]) + 1; nearest_later_neighbour < (int)order; nearest_later_neighbour++)
-		{
-			if (adjacent(vertex, peo[nearest_later_neighbour]))
-				break;
-		}
-
-		if (nearest_later_neighbour < (int)order)
-		{
-			for (int later_neighbour = order - 1; later_neighbour > nearest_later_neighbour; later_neighbour--)
-			{
-				if (adjacent(vertex, peo[later_neighbour])
-					&& !adjacent(peo[nearest_later_neighbour], peo[later_neighbour]))
-					return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-
-/**
 * tests if the vertices in given perfect elimination ordering at index t and t+1 are swappable, i.e. the peo with these vertices swapped is a peo as well
 **/
 bool Graph::peo_swappable(unsigned * peo, unsigned * h, int t) {
@@ -418,7 +327,7 @@ bool Graph::peo_swappable(unsigned * peo, unsigned * h, int t) {
 
 
 /**
-* swaps the vertices in given given perfect elimination ordering at index t and t+1 and tests if the graph is closed with respect to this ordering
+* swaps the vertices in given given perfect elimination ordering at index t and t+1 and tests if the graph is closed with respect to the induced labeling
 **/
 bool Graph::peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t) {
 	unsigned x = peo[t];
@@ -473,7 +382,7 @@ bool Graph::peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, uns
 
 /**
 * recursively iterates through all perfect elimination orderings of the graph (twice) by swapping consecutive elements
-* returns true as soon as an ordering was found with respect to which the graph is closed
+* returns true as soon as an ordering was found for which the graph is closed with respect to the induced labeling
 **/
 bool Graph::test_pe_orderings(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, unsigned i) {
 	if (i == 0)
@@ -847,7 +756,7 @@ std::string Graph::convert_to_string() {
 
 
 
-std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling_indices) {
+std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling) {
 	std::string edges = "{";
 
 	for (unsigned first_vertex = 1; first_vertex <= order; first_vertex++)
@@ -857,9 +766,9 @@ std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling_indices) {
 			if (adjacent(first_vertex, second_vertex))
 			{
 				edges.push_back('{');
-				edges += std::to_string(labeling_indices[first_vertex - 1] + 1);
+				edges += std::to_string(labeling[first_vertex - 1] + 1);
 				edges.push_back(',');
-				edges += std::to_string(labeling_indices[second_vertex - 1] + 1);
+				edges += std::to_string(labeling[second_vertex - 1] + 1);
 				edges.push_back('}');
 				edges.push_back(',');
 			}
@@ -1284,6 +1193,52 @@ std::vector<unsigned> Graph::get_girth() {
 
 
 /**
+* tests if the graph is closed with respect to given (perfect elimination) ordering, i.e.
+* {a,b},{i,j} in E(G) with a < b, i < j  =>  {a,i} in E(G) if b=j and {b,j} in E(G) if a=i
+**/
+bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {
+	for (unsigned vertex = 1; vertex <= order; vertex++)
+	{
+		int nearest_prior_neighbour;
+		for (nearest_prior_neighbour = (int)(peo_indices[vertex - 1]) - 1; nearest_prior_neighbour >= 0; nearest_prior_neighbour--)
+		{
+			if (adjacent(vertex, peo[nearest_prior_neighbour]))
+				break;
+		}
+
+		if (nearest_prior_neighbour >= 0)
+		{
+			for (int prior_neighbour = 0; prior_neighbour < nearest_prior_neighbour; prior_neighbour++)
+			{
+				if (adjacent(vertex, peo[prior_neighbour])
+					&& !adjacent(peo[nearest_prior_neighbour], peo[prior_neighbour]))
+					return false;
+			}
+		}
+
+		int nearest_later_neighbour;
+		for (nearest_later_neighbour = (int)(peo_indices[vertex - 1]) + 1; nearest_later_neighbour < (int)order; nearest_later_neighbour++)
+		{
+			if (adjacent(vertex, peo[nearest_later_neighbour]))
+				break;
+		}
+
+		if (nearest_later_neighbour < (int)order)
+		{
+			for (int later_neighbour = order - 1; later_neighbour > nearest_later_neighbour; later_neighbour--)
+			{
+				if (adjacent(vertex, peo[later_neighbour])
+					&& !adjacent(peo[nearest_later_neighbour], peo[later_neighbour]))
+					return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+
+/**
  * tests if the graph is connected
 **/
 bool Graph::is_connected() {
@@ -1305,11 +1260,14 @@ bool Graph::is_cograph() {
 	if (order < 4)
 		return true;
 
-	std::vector<unsigned> order_4_subsets = gen_order_4_subsets();
+	unsigned pow_set_size = nth_power(2, order);
 
-	for (unsigned i = 0; i < order_4_subsets.size() / 4; i++)
+	for (int subset = pow_set_size - 1; subset >= 15; subset--)
 	{
-		if (is_induced_path(&order_4_subsets, i))
+		unsigned subset_order = count_set_bits(subset);
+
+		if (subset_order == 4
+			&& is_induced_path(subset, 4))
 			return false;
 	}
 
@@ -1402,11 +1360,14 @@ bool Graph::is_clawfree() {
 	if (order < 4)
 		return true;
 
-	std::vector<unsigned> order_4_subsets = gen_order_4_subsets();
+	unsigned pow_set_size = nth_power(2, order);
 
-	for (unsigned i = 0; i < order_4_subsets.size() / 4; i++)
+	for (int subset = pow_set_size - 1; subset >= 15; subset--)
 	{
-		if (is_induced_claw(&order_4_subsets, i))
+		unsigned subset_order = count_set_bits(subset);
+
+		if (subset_order == 4
+			&& is_induced_claw(subset))
 			return false;
 	}
 
@@ -1529,7 +1490,7 @@ unsigned * Graph::gen_closed_labeling() {
 		closed = peo_switch(peo, peo_indices, h, a, b, order / 2 - 1);
 
 	if (!closed)
-		closed = test_pe_orderings(peo, peo_indices, h, a, b, order / 2);
+		test_pe_orderings(peo, peo_indices, h, a, b, order / 2);
 
 	delete[] h;
 	delete[] a;
