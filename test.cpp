@@ -3,7 +3,7 @@
 #include <chrono>
 
 #define NUMBER_TESTS 23
-#define PASSES 10
+#define PASSES 1
 #define TESTFILE "graphs9.g6"
 
 const char * TESTS[NUMBER_TESTS] = {
@@ -288,7 +288,7 @@ void complete_test(DatabaseInterface * dbi) {
 	// CLOSED NAIVE
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_type(&Graph::is_closed_naive, "clsdNaive", 0);
+	//dbi->update_type(&Graph::is_closed_naive, "clsdNaive", 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	// CLOSED NECESSARY CONDITION
@@ -312,37 +312,37 @@ void complete_test(DatabaseInterface * dbi) {
 	// CLIQUE NUMBER NAIVE
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_numbers(&Graph::get_clique_number_naive, &(std::vector<const char *>{ "clqNrNaive" }), 0);
+	dbi->update_values(&Graph::get_clique_number_naive, &(std::vector<const char *>{ "clqNrNaive" }), 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	// CLIQUE NUMBERS BRON-KERBOSCH
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_numbers(&Graph::get_clique_numbers, &(std::vector<const char *>{ "cliqueNumber", "maxCliqueNumber" }), 0);
+	dbi->update_values(&Graph::get_clique_numbers, &(std::vector<const char *>{ "cliqueNumber", "maxCliqueNumber" }), 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	// INDEPENDENCE NUMBERS
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_numbers(&Graph::get_independence_numbers, &(std::vector<const char *>{ "stableNumber", "maxStableNumber" }), 0);
+	dbi->update_values(&Graph::get_independence_numbers, &(std::vector<const char *>{ "stableNumber", "maxStableNumber" }), 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	// DETOUR NUMBER
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_numbers(&Graph::get_detour_number, &(std::vector<const char *>{ "detourNumber" }), 0);
+	dbi->update_values(&Graph::get_detour_number, &(std::vector<const char *>{ "detourNumber" }), 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	// EXTREMAL DEGREES
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_numbers(&Graph::get_extreme_degrees, &(std::vector<const char *>{ "minDeg", "maxDeg" }), 0);
+	dbi->update_values(&Graph::get_extreme_degrees, &(std::vector<const char *>{ "minDeg", "maxDeg" }), 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	// GIRTH
 	std::cout << TESTS[nr] << "...\n";
 	t = std::chrono::high_resolution_clock::now();
-	dbi->update_numbers(&Graph::get_girth, &(std::vector<const char *>{ "girth" }), 0);
+	dbi->update_values(&Graph::get_girth, &(std::vector<const char *>{ "girth" }), 0);
 	t_total[nr++] += std::chrono::high_resolution_clock::now() - t;
 
 	std::cout << "\n\n\nRESULTS\n\n";
