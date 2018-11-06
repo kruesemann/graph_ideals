@@ -159,7 +159,7 @@ Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph
 #define NUMBER_VALUESETS 5
 typedef std::vector<unsigned>(Graph::*Graph_values) ();
 const char * VALUESETS[NUMBER_VALUESETS] = { "clique", "detour", "degree", "independence", "girth" };
-std::vector<const char *> COLUMNSETS[NUMBER_VALUESETS] = { { "cliqueNumber", "#maxCliques" }, { "detourNumber" }, { "minDeg", "maxDeg" }, { "independenceNr", "#maxIndependentSets" }, { "girth" } };
+std::vector<const char *> COLUMNSETS[NUMBER_VALUESETS] = { { "cliqueNr", "#maxCliques" }, { "detourNr" }, { "minDeg", "maxDeg" }, { "independenceNr", "#maxIndependentSets" }, { "girth" } };
 Graph_values GETTERS[NUMBER_VALUESETS] = { &Graph::get_clique_numbers, &Graph::get_detour_number, &Graph::get_extreme_degrees, &Graph::get_independence_numbers, &Graph::get_girth };
 
 #define NUMBER_TYPES 7
