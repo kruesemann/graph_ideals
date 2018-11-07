@@ -470,7 +470,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 
 		script.pop_back();
 		script.pop_back();
-		script += "\n};\n\nfilename=\"" + std::to_string(index) + "_" + datetime + "_" + *name + "_" + std::to_string(k) + ".result\";\nN=" + std::to_string(i - 1) + ";\n\n" + buffer.str();
+		script += "\n};\n\nfilename=\"" + std::to_string(index) + "_" + datetime + "_" + *name + "_" + std::to_string(k) + ".result\";\nN=" + std::to_string(i) + ";\n\n" + buffer.str();
 
 		std::string filename = std::to_string(index) + "_" + datetime + "_" + *name + "_" + std::to_string(k) + ".m2";
 		std::ofstream kFile(filename, std::ios::trunc);

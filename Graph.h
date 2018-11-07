@@ -16,19 +16,18 @@ private:
 	bool is_induced_path(int subset, unsigned subset_order);
 	bool is_induced_claw(int subset);
 
-	std::pair<unsigned *, unsigned *> gen_lexicographic_ordering();
-
+	bool is_universal(unsigned vertex);
 	bool is_simplicial(unsigned vertex, bool * visited);
 
 	std::pair<unsigned, unsigned> get_simplicial_pair(bool * visited);
+
+	std::pair<unsigned *, unsigned *> gen_lexicographic_ordering();
 
 	bool peo_swappable(unsigned * peo, unsigned * h, int t);
 	bool peo_move(unsigned * peo, unsigned * peo_indices, unsigned * h, int t);
 	bool peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, int t);
 	bool test_pe_orderings(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, unsigned i);
 	void gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b);
-
-	bool is_universal(unsigned vertex);
 
 public:
 	Graph() : order(0), size(0) {
@@ -77,14 +76,13 @@ public:
 
 
 	unsigned get_order();
+	unsigned get_size();
 
 	std::string convert_to_string();
 	std::string convert_to_string_wrt_labeling(unsigned * labeling);
 	std::string convert_to_g6_format();
 
 	bool adjacent(unsigned v, unsigned w);
-
-	unsigned get_size();
 
 	bool read_next_g6_format(std::ifstream * file);
 	bool read_next_list_format(std::ifstream * file);

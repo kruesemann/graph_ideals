@@ -4,10 +4,9 @@
 -- DO NOT:  Define values of "G", "N" and "filename" as they will be defined by the automated script generation.
 
 needsPackage("BinomialEdgeIdeals");
-needsPackage("Graphs");
 
-for i from 0 to N do B_i = betti res bei graph G_i;   -- change "bei" here
+for i from 0 to N-1 do B_i = betti res bei G_i;   -- change "bei" here
 
 F:=openOut(filename);
-for i from 0 to N do F << B_i << endl << endl;
+for i from 0 to N-1 do F << B_i << endl << endl;
 close F;

@@ -9,7 +9,7 @@
 
 class DatabaseInterface
 {
-public:
+private:
 	sqlite3 * database;
 
 	unsigned number_columns;
@@ -17,9 +17,10 @@ public:
 
 	std::vector<std::string> view_columns;
 	std::vector<std::vector<std::string>> view_contents;
-	
+
 	std::vector<unsigned> column_widths;
 
+public:
 	DatabaseInterface() {}
 
 	DatabaseInterface(const char * database_file_name) : number_columns(0), number_rows(0), view_columns{}, view_contents{}, column_widths{} {

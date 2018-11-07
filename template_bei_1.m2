@@ -4,14 +4,13 @@
 -- DO NOT:  Define values of "G", "N" and "filename" as they will be defined by the automated script generation.
 
 needsPackage("BinomialEdgeIdeals");
-needsPackage("Graphs");
 
-for i from 0 to N do {
-I = bei graph G_i;                                               -- change "bei" here
+for i from 0 to N-1 do {
+I = bei G_i;                                                     -- change "bei" here
 if I === ideal() then I = promote(I, QQ[x_1, x_2]);              -- this is necessary as ideal() defaults to an ideal of ZZ and hilbertSeries does not like that
 d_i = first degree numerator hilbertSeries(I, Reduce => true);
 };
 
 F:=openOut(filename);
-for i from 0 to N do F << d_i << endl;
+for i from 0 to N-1 do F << d_i << endl;
 close F;

@@ -258,6 +258,69 @@ bool Graph::is_induced_claw(int subset) {
 
 
 /**
+* tests if given vertex is universal, i.e. it is adjacent to all other vertices of the graph
+**/
+bool Graph::is_universal(unsigned vertex) {
+	for (unsigned w = 1; w <= order; w++)
+		if (w != vertex
+			&& !adjacent(vertex, w))
+			return false;
+
+	return true;
+}
+
+
+/**
+* tests if the given vertex is simplicial with respect to the subgraph induced by the vertices which have not been visited
+**/
+bool Graph::is_simplicial(unsigned vertex, bool * visited) {
+	for (unsigned v = 1; v <= order; v++)
+	{
+		if (!visited[v - 1]
+			&& adjacent(vertex, v))
+		{
+			for (unsigned w = v + 1; w <= order; w++)
+			{
+				if (!visited[w - 1]
+					&& adjacent(vertex, w)
+					&& !adjacent(v, w))
+					return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+
+/**
+* returns a pair of simplicial vertices of the subgraph induced by the vertices which have not been visited
+* expects the subgraph to have at least two simplicial vertices (this is the case if the graph is chordal for example)
+**/
+std::pair<unsigned, unsigned> Graph::get_simplicial_pair(bool * visited) {
+	unsigned first = 0;
+	unsigned second = 0;
+
+	for (unsigned v = 1; v <= order; v++)
+	{
+		if (!visited[v - 1]
+			&& is_simplicial(v, visited))
+		{
+			if (first == 0)
+				first = v;
+			else
+			{
+				second = v;
+				break;
+			}
+		}
+	}
+
+	return std::pair<unsigned, unsigned>(first, second);
+}
+
+
+/**
  * generates a lexicographic ordering on the vertices of the graph via lexicographic-breadth-first-search
 **/
 std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
@@ -461,56 +524,6 @@ bool Graph::test_pe_orderings(unsigned * peo, unsigned * peo_indices, unsigned *
 
 
 /**
-* tests if the given vertex is simplicial with respect to the subgraph induced by the vertices which have not been visited
-**/
-bool Graph::is_simplicial(unsigned vertex, bool * visited) {
-	for (unsigned v = 1; v <= order; v++)
-	{
-		if (!visited[v - 1]
-			&& adjacent(vertex, v))
-		{
-			for (unsigned w = v + 1; w <= order; w++)
-			{
-				if (!visited[w - 1]
-					&& adjacent(vertex, w)
-					&& !adjacent(v, w))
-					return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-
-/**
-* returns a pair of simplicial vertices of the subgraph induced by the vertices which have not been visited
-* expects the subgraph to have at least two simplicial vertices (this is the case if the graph is chordal for example)
-**/
-std::pair<unsigned, unsigned> Graph::get_simplicial_pair(bool * visited) {
-	unsigned first = 0;
-	unsigned second = 0;
-
-	for (unsigned v = 1; v <= order; v++)
-	{
-		if (!visited[v - 1]
-			&& is_simplicial(v, visited))
-		{
-			if (first == 0)
-				first = v;
-			else
-			{
-				second = v;
-				break;
-			}
-		}
-	}
-
-	return std::pair<unsigned, unsigned>(first, second);
-}
-
-
-/**
 * generates an initial perfect elimination ordering via consecutive elimination of pairs of simplicial vertices
 **/
 void Graph::gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b) {
@@ -560,19 +573,6 @@ void Graph::gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h
 	}
 
 	delete[] visited;
-}
-
-
-/**
- * tests if given vertex is universal, i.e. it is adjacent to all other vertices of the graph
-**/
-bool Graph::is_universal(unsigned vertex) {
-	for (unsigned w = 1; w <= order; w++)
-		if (w != vertex
-			&& !adjacent(vertex, w))
-			return false;
-
-	return true;
 }
 
 
@@ -724,6 +724,14 @@ unsigned Graph::get_order() {
 
 
 /**
+* returns number of edges
+**/
+unsigned Graph::get_size() {
+	return size;
+}
+
+
+/**
  * converts the adjacency matrix into a string containing all edges in the form of "{{1,2},{1,4},{2,3},{3,5}}"
 **/
 std::string Graph::convert_to_string() {
@@ -825,14 +833,6 @@ std::string Graph::convert_to_g6_format() {
 **/
 bool Graph::adjacent(unsigned v, unsigned w) {
 	return adjacencies[get_index(v, w, order)] == 1;
-}
-
-
-/**
- * returns number of edges
-**/
-unsigned Graph::get_size() {
-	return size;
 }
 
 
