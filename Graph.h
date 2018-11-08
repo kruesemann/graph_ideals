@@ -107,4 +107,3 @@ public:
 
 	unsigned * gen_closed_labeling();
 };
-

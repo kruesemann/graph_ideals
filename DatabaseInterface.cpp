@@ -20,6 +20,10 @@ inline unsigned str_to_unsigned(std::string * str) {
 	return number;
 }
 
+
+/**
+* returns current date and time as a string
+**/
 inline std::string datetime() {
 	time_t rawtime;
 	struct tm timeinfo;
@@ -36,7 +40,7 @@ inline std::string datetime() {
 
 
 /**
- * returns the appropriate coordinates for vertex to print the graph of given order on a circle
+ * returns the appropriate coordinates for a vertex to print the graph of given order on a circle
 **/
 std::pair<int, int> get_coordinate(unsigned vertex, unsigned order) {
 	int first = (int)100 * cos(2 * (vertex - 1) * PI / order);
@@ -60,7 +64,7 @@ void DatabaseInterface::reset_view() {
 
 
 /**
- * outputs the current view to the terminal
+ * outputs the current view to the terminal by iterating over all rows (until the limit is reached) in the current view
 **/
 void DatabaseInterface::show_view(int limit) {
 	if (number_columns != 0)
@@ -97,7 +101,7 @@ void DatabaseInterface::show_view(int limit) {
 
 
 /**
-* outputs the current view to given file
+* outputs the current view to given file by iterating over all rows in the current view
 **/
 void DatabaseInterface::save_view(std::ofstream * file) {
 	if (number_columns != 0)
@@ -125,7 +129,8 @@ void DatabaseInterface::save_view(std::ofstream * file) {
 
 
 /**
-* outputs the current view to the terminal in rich format
+* outputs the current view to the terminal in rich format by iterating over all rows (until the limit is reached) in the current view
+* all data with 'Bettis' in its column name will be printed as tables
 **/
 void DatabaseInterface::show_view_rich(int limit) {
 	if (number_columns != 0)
@@ -202,7 +207,8 @@ void DatabaseInterface::show_view_rich(int limit) {
 
 
 /**
-* outputs the current view to given file in rich format
+* outputs the current view to given file in rich format by iterating over all rows in the current view
+* all data with 'Bettis' in its column name will be printed as tables
 **/
 void DatabaseInterface::save_view_rich(std::ofstream * file) {
 	if (number_columns != 0)
@@ -270,7 +276,7 @@ void DatabaseInterface::save_view_rich(std::ofstream * file) {
 
 
 /**
- * outputs all graphs of the current view to given file in LaTeX-TikZ format (also outputs necessary LaTeX-package includes)
+ * outputs all graphs of the current view to given file in LaTeX-TikZ format (also outputs necessary LaTeX-package includes) by iterating over all rows in the current view
 **/
 void DatabaseInterface::save_view_visualisation(std::ofstream * file) {
 	int graphID_index = -1;
@@ -371,7 +377,7 @@ void DatabaseInterface::save_view_visualisation(std::ofstream * file) {
 
 
 /**
-* outputs all graphs in the current view to given file in g6 format
+* outputs all graphs in the current view to given file in g6 format by iterating over all rows in the current view
 **/
 void DatabaseInterface::save_view_g6(std::ofstream * file) {
 	int graphOrder_index = -1;
@@ -404,6 +410,8 @@ void DatabaseInterface::save_view_g6(std::ofstream * file) {
 
 /**
 * generates Macaulay2 scripts of all graphs satisfying query_condition, based on template filename, each labeled wrt to the given labeling labeling_name
+* for this, the function queries the database and iterates over all results printing the graphs into files based on the template
+* function also registers the generated scripts in the scripts table so that results may be imported later
 **/
 void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name, unsigned index) {
 	sqlite3_stmt * qry;
@@ -677,7 +685,7 @@ bool DatabaseInterface::execute_SQL_statement(std::string * statement) {
 
 
 /**
-* creates the script table in database for ensuring database consistency
+* creates the script table in the database for ensuring database consistency
 **/
 bool DatabaseInterface::create_scripts_table() {
 	std::string statement = "CREATE TABLE Scripts(" \
@@ -698,7 +706,7 @@ bool DatabaseInterface::create_scripts_table() {
 
 
 /**
- * creates graphs table in database
+ * creates graphs table in the database
 **/
 bool DatabaseInterface::create_graphs_table() {
 	std::string statement = "CREATE TABLE IF NOT EXISTS Graphs("  \
@@ -714,7 +722,8 @@ bool DatabaseInterface::create_graphs_table() {
 
 
 /**
- * batch imports graphs from given file
+ * expects graphs in given file to be formatted correctly
+ * batch imports the graphs into the database
 **/
 void DatabaseInterface::import_graphs(std::ifstream * file, bool (Graph::*Read_next_format)(std::ifstream * file)) {
 	sqlite3_exec(database, "BEGIN TRANSACTION;", 0, 0, 0);
@@ -746,7 +755,7 @@ void DatabaseInterface::import_graphs(std::ifstream * file, bool (Graph::*Read_n
 
 
 /**
- * updates the type of all graphs that satisfy graph_test and query_condition
+ * updates the type of all graphs that satisfy graph_test and query_condition by quering the database and iterating over all results
 **/
 bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * type, const char * query_condition) {
 	std::string query = "SELECT graphID,graphOrder,edges,type FROM Graphs WHERE (type IS NULL OR type NOT LIKE '%" + std::string(type) + "%')";
@@ -815,6 +824,9 @@ bool DatabaseInterface::update_type(bool(Graph::*graph_test)(), const char * typ
 }
 
 
+/**
+* updates with graph_values the values in given columns of all graphs that satisfy query_condition by quering the database and iterating over all results
+**/
 bool DatabaseInterface::update_values(std::vector<unsigned>(Graph::*graph_values)(), std::vector<const char *> * columns, const char * query_condition) {
 	if (columns->size() == 0)
 	{
@@ -910,6 +922,10 @@ bool DatabaseInterface::update_values(std::vector<unsigned>(Graph::*graph_values
 }
 
 
+/**
+* returns the internal result type of the script with ID scriptID in the scripts table
+* changes the values of name, query_condition and datetime to the respective values in the scripts table
+**/
 unsigned DatabaseInterface::find_script_data(unsigned scriptID, std::string * name, std::string * query_condition, std::string * datetime) {
 	sqlite3_stmt * qry1;
 	if (sqlite3_prepare_v2(database, ("SELECT name,condition,datetime,resultType FROM Scripts WHERE scriptID == " + std::to_string(scriptID)).c_str(), -1, &qry1, 0) != SQLITE_OK)
@@ -1011,7 +1027,7 @@ bool DatabaseInterface::insert_betti_data(std::string * name, std::string * quer
 		{
 			if (sqlite3_step(qry2) != SQLITE_ROW)
 			{
-				FAIL("Adding Betti data", "There are more tables in the files than graphs of order satisfying condition '" << *query_condition << "' in the database.");
+				FAIL("Adding Betti data", "There are more tables in the files than graphs satisfying condition '" << *query_condition << "' in the database.");
 				kFile.close();
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 				sqlite3_finalize(qry2);
@@ -1053,6 +1069,9 @@ bool DatabaseInterface::insert_betti_data(std::string * name, std::string * quer
 }
 
 
+/**
+* reads all degrees of h-polynomials from the files determined by the given name, datetime and index, updates all graphs satisfying query_condition
+**/
 bool DatabaseInterface::insert_hpoldeg_data(std::string * name, std::string * query_condition, std::string * datetime, unsigned index) {
 	sqlite3_exec(database, (std::string("ALTER TABLE Graphs ADD ") + *name + "Hpoldeg INT;").c_str(), 0, 0, 0);
 
@@ -1142,7 +1161,7 @@ bool DatabaseInterface::insert_hpoldeg_data(std::string * name, std::string * qu
 
 			if (sqlite3_step(qry2) != SQLITE_ROW)
 			{
-				FAIL("Adding hpoldeg data", "There are more numbers in the files than graphs of order satisfying condition '" << *query_condition << "' in the database.");
+				FAIL("Adding hpoldeg data", "There are more numbers in the files than graphs satisfying condition '" << *query_condition << "' in the database.");
 				kFile.close();
 				sqlite3_exec(database, "COMMIT;", 0, 0, 0);
 				sqlite3_finalize(qry2);

@@ -18,14 +18,14 @@
 					"--Example: help insert\n" \
 					"\n" \
 					"--Valid 'keyword' arguments:\n" \
-					"     sql     : shows a sample of useful SQL queries instead\n" \
-					"     import  : shows a description of the 'import' functionality\n" \
-					"     values  : shows a description of the 'values' functionality\n" \
-					"     type    : shows a description of the 'type' functionality\n" \
-					"     scripts : shows a description of the 'scripts' functionality\n" \
-					"     results : shows a description of the 'results' functionality\n" \
-					"     show    : shows a description of the 'show' functionality\n" \
-					"     save    : shows a description of the 'save' functionality\n" \
+					"     sql      : shows a sample of useful SQL queries instead\n" \
+					"     import   : shows a description of the 'import' functionality\n" \
+					"     compute  : shows a description of the 'compute' functionality\n" \
+					"     classify : shows a description of the 'classify' functionality\n" \
+					"     scripts  : shows a description of the 'scripts' functionality\n" \
+					"     results  : shows a description of the 'results' functionality\n" \
+					"     show     : shows a description of the 'show' functionality\n" \
+					"     save     : shows a description of the 'save' functionality\n" \
 					"\n" \
 					"Every input not starting with a keyword will be interpreted as an SQL query. Results from queries will be saved in memory as the current view.\n"
 
@@ -72,38 +72,38 @@
 					"--The 'file name' must specify a relative path to a correctly formatted text file. It can be entered with or without quotation marks '\"'.\n"
 
 
-#define values_text	"Enter 'values (-allexcept) (-[valueSet1] -[valueSet2] ...) (-where [condition])' to compute all specified value sets of the graphs in the database.\n" \
-					"\n" \
-					"--Example: values -clique -where \"graphOrder == 4\"\n" \
-					"\n" \
-					"--The argument '-allexcept' is used to compute all value sets except the ones specified. It can be used to compute all value sets.\n" \
-					"\n" \
-					"--Valid value set arguments:\n" \
-					"     -clique       : Computes the clique number and the number of maximal cliques of each graph.\n" \
-					"     -detour       : Computes the detour number of each graph, i.e., the length of the longest induced path.\n" \
-					"     -degree       : Computes the minimum and maximum degree of vertices in each graph.\n" \
-					"     -independence : Computes the independence number and the number of maximal independent (or stable) sets of each graph.\n" \
-					"     -girth        : Computes the girth of each graph, i.e., the minimum length of a cycle (or 0 if there are none).\n" \
-					"\n" \
-					"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be updated.\n"
+#define compute_text	"Enter 'compute (-allexcept) (-[valueSet1] -[valueSet2] ...) (-where [condition])' to compute all specified value sets of the graphs in the database.\n" \
+						"\n" \
+						"--Example: compute -clique -where \"graphOrder == 4\"\n" \
+						"\n" \
+						"--The argument '-allexcept' is used to compute all value sets except the ones specified. It can be used to compute all value sets.\n" \
+						"\n" \
+						"--Valid value set arguments:\n" \
+						"     -clique       : Computes the clique number and the number of maximal cliques of each graph.\n" \
+						"     -detour       : Computes the detour number of each graph, i.e., the length of the longest induced path.\n" \
+						"     -degree       : Computes the minimum and maximum degree of vertices in each graph.\n" \
+						"     -independence : Computes the independence number and the number of maximal independent (or stable) sets of each graph.\n" \
+						"     -girth        : Computes the girth of each graph, i.e., the minimum length of a cycle (or 0 if there are none).\n" \
+						"\n" \
+						"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be updated.\n"
 
 
-#define type_text	"Enter 'type (-allexcept) (-[type1] -[type2] ...) (-where [condition])' to classify all graphs of the specified types in the database as such.\n" \
-					"\n" \
-					"--Example: type -allexcept -chordal -closed -where \"graphOrder < 5\"\n" \
-					"\n" \
-					"--The argument '-allexcept' is used to classify all types except the ones specified. It can be used to classify all types.\n" \
-					"\n" \
-					"--Valid type arguments:\n" \
-					"     -connected\n" \
-					"     -cograph\n" \
-					"     -euler\n" \
-					"     -chordal\n" \
-					"     -claw-free\n" \
-					"     -closed      (This requires the chordal and claw-free graphs to be classified first.)\n" \
-					"     -cone\n" \
-					"\n" \
-					"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be classified.\n"
+#define classify_text	"Enter 'classify (-allexcept) (-[type1] -[type2] ...) (-where [condition])' to classify all graphs of the specified types in the database as such.\n" \
+						"\n" \
+						"--Example: classify -allexcept -chordal -closed -where \"graphOrder < 5\"\n" \
+						"\n" \
+						"--The argument '-allexcept' is used to classify all types except the ones specified. It can be used to classify all types.\n" \
+						"\n" \
+						"--Valid type arguments:\n" \
+						"     -connected\n" \
+						"     -cograph\n" \
+						"     -euler\n" \
+						"     -chordal\n" \
+						"     -claw-free\n" \
+						"     -closed      (This requires the chordal and claw-free graphs to be classified first.)\n" \
+						"     -cone\n" \
+						"\n" \
+						"--The argument '-where' is used to indicate a following SQL query condition (in quotation marks '\"'). Only graphs satisfying this additional condition will be classified.\n"
 
 
 #define scripts_text	"Enter 'scripts [name] -[result type] (-[labeling]) (-[batch size]) ([template name]) (-where [condition])' to generate Macaulay2 scripts based on a template.\n" \
@@ -151,17 +151,20 @@
 					"--The argument '-g6' stands for the 'Graph6' format, an efficient format for storing undirected graphs.\n"
 
 
+// internal format lists, register new import formats here
 #define NUMBER_FORMATS 2
 typedef bool (Graph::*Read_next_format)(std::ifstream * file);
 const char * FORMATS[NUMBER_FORMATS] = { "g6", "list" };
 Read_next_format READERS[NUMBER_FORMATS] = { &Graph::read_next_g6_format, &Graph::read_next_list_format };
 
+// internal value set lists, register new value sets computed for the database here
 #define NUMBER_VALUESETS 5
 typedef std::vector<unsigned>(Graph::*Graph_values) ();
 const char * VALUESETS[NUMBER_VALUESETS] = { "clique", "detour", "degree", "independence", "girth" };
-std::vector<const char *> COLUMNSETS[NUMBER_VALUESETS] = { { "cliqueNr", "#maxCliques" }, { "detourNr" }, { "minDeg", "maxDeg" }, { "independenceNr", "#maxIndependentSets" }, { "girth" } };
+std::vector<const char *> COLUMNSETS[NUMBER_VALUESETS] = { { "cliqueNr", "maxCliques" }, { "detourNr" }, { "minDeg", "maxDeg" }, { "independenceNr", "maxIndependentSets" }, { "girth" } };
 Graph_values GETTERS[NUMBER_VALUESETS] = { &Graph::get_clique_numbers, &Graph::get_detour_number, &Graph::get_extreme_degrees, &Graph::get_independence_numbers, &Graph::get_girth };
 
+// internal type lists, register new types classified in the database here
 #define NUMBER_TYPES 7
 typedef bool (Graph::*Graph_test) ();
 const char * TYPES[NUMBER_TYPES] = { "connected", "cograph", "euler", "chordal", "claw-free", "closed", "cone" };
@@ -169,11 +172,13 @@ const char * PRINT_NAMES[NUMBER_TYPES] = { "connected graphs", "cographs", "eule
 Graph_test TESTS[NUMBER_TYPES] = { &Graph::is_connected, &Graph::is_cograph, &Graph::is_euler, &Graph::is_chordal, &Graph::is_clawfree, &Graph::is_closed, &Graph::is_cone };
 const char * STD_CONDITIONS[NUMBER_TYPES] = { 0, 0, 0, 0, 0, "type LIKE '%chordal%' AND type LIKE '%claw-free%'", 0 };
 
+// internal labeling lists, register new labelings for Macaulay2 script generation here
 #define NUMBER_LABELINGS 1
 typedef unsigned * (Graph::*Gen_labeling) ();
 const char * LABELINGS[NUMBER_LABELINGS] = { "closed" };
 Gen_labeling GENERATORS[NUMBER_LABELINGS] = { &Graph::gen_closed_labeling };
 
+// internal result type lists, register new result types of Macaulay2 scripts here
 #define NUMBER_RESULTS 2
 typedef bool (DatabaseInterface::*Result_inserter) (std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);
 const char * RESULTS[NUMBER_RESULTS] = { "betti", "hpoldeg" };
@@ -181,6 +186,9 @@ Result_inserter INSERTERS[NUMBER_RESULTS] = { &DatabaseInterface::insert_betti_d
 
 
 //########## helper functions ##########
+/**
+* returns and cuts off the first argument (separated by ' ' with or without '"') of given input
+**/
 std::string cut_first_argument(std::string * input) {
 	while (!input->empty() && input->front() == ' ')
 		*input = input->substr(1, std::string::npos);
@@ -220,6 +228,9 @@ std::string cut_first_argument(std::string * input) {
 }
 
 
+/**
+* parses unsigned integer given as string
+**/
 int parse_unsigned(std::string * arg) {
 	int number = 0;
 
@@ -247,8 +258,8 @@ int parse_unsigned(std::string * arg) {
 void help_parse(DatabaseInterface * dbi, std::string * input) {
 	bool sql = false;
 	bool import = false;
-	bool values = false;
-	bool type = false;
+	bool compute = false;
+	bool classify = false;
 	bool scripts = false;
 	bool result = false;
 	bool show = false;
@@ -271,10 +282,10 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 			sql = true;
 		else if (arg == "import")
 			import = true;
-		else if (arg == "values")
-			values = true;
-		else if (arg == "type")
-			type = true;
+		else if (arg == "compute")
+			compute = true;
+		else if (arg == "classify")
+			classify = true;
 		else if (arg == "scripts")
 			scripts = true;
 		else if (arg == "results")
@@ -297,10 +308,10 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 			std::cout << sql_text << std::endl;
 		else if (import)
 			std::cout << import_text << std::endl;
-		else if (values)
-			std::cout << values_text << std::endl;
-		else if (type)
-			std::cout << type_text << std::endl;
+		else if (compute)
+			std::cout << compute_text << std::endl;
+		else if (classify)
+			std::cout << classify_text << std::endl;
 		else if (scripts)
 			std::cout << scripts_text << std::endl;
 		else if (result)
@@ -317,6 +328,7 @@ void help_parse(DatabaseInterface * dbi, std::string * input) {
 
 /**
 * parses the arguments for import
+* based on that, the function opens a file to import all included graphs in the specified format into the database
 **/
 void import_parse(DatabaseInterface * dbi, std::string * input) {
 	int format = -1;
@@ -384,9 +396,10 @@ void import_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
-* parses the arguments for values
+* parses the arguments for compute
+* based on that, the function calls database updates computing all specified value sets for graphs satisfying given condition
 **/
-void values_parse(DatabaseInterface * dbi, std::string * input) {
+void compute_parse(DatabaseInterface * dbi, std::string * input) {
 	bool allexcept = false;
 	std::vector<bool> to_be_computed;
 	bool condition = false;
@@ -467,9 +480,10 @@ void values_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
-* parses the arguments for type
+* parses the arguments for classify
+* based on that, the function calls database updates classifying all specified types for graphs satisfying given condition
 **/
-void type_parse(DatabaseInterface * dbi, std::string * input) {
+void classify_parse(DatabaseInterface * dbi, std::string * input) {
 	bool allexcept = false;
 	std::vector<bool> to_be_classified;
 	bool condition = false;
@@ -554,7 +568,8 @@ void type_parse(DatabaseInterface * dbi, std::string * input) {
 
 
 /**
-* parses the arguments for gen_M2_scripts and calls gen_m2_scripts with the appropriate arguments
+* parses the arguments for gen_M2_scripts
+* based on that, the function calls Macaulay2-script generation for graphs satisfying specified condition
 **/
 void script_parse(DatabaseInterface * dbi, std::string * input) {
 	bool condition = false;
@@ -684,6 +699,7 @@ void script_parse(DatabaseInterface * dbi, std::string * input) {
 
 /**
 * parses the arguments for result
+* based on that, the function queries the scripts table to find the specified registration entry and calls the import into the database of respective results
 **/
 void results_parse(DatabaseInterface * dbi, std::string * input) {
 	int scriptID = -1;

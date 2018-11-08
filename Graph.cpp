@@ -29,7 +29,7 @@ inline unsigned nth_power(unsigned x, unsigned n) {
 
 
 /**
-* Brian Kernighan's algorithm to count set bits in integer (count ones in binary representation)
+* Brian Kernighan's algorithm to count set bits in integer (counts ones in binary representation)
 **/
 inline unsigned count_set_bits(int n)
 {
@@ -154,6 +154,7 @@ bool Graph::is_induced_connected(unsigned * vertices, unsigned subset_order) {
 
 /**
 * tests if a given subset in binary representation of order subset_order is an induced path
+* this is done by tallying up degrees, checking for invalid degrees, computing the check sum of degrees and checking if the induced subgraph is connected
 **/
 bool Graph::is_induced_path(int subset, unsigned subset_order) {
 	unsigned * degrees = new unsigned[subset_order];
@@ -211,6 +212,7 @@ bool Graph::is_induced_path(int subset, unsigned subset_order) {
 
 /**
 * tests if a given order-4-subset of vertices is an induced claw
+* this is done by tallying up degrees, checking for invalid degrees and computing the check sum of degrees
 **/
 bool Graph::is_induced_claw(int subset) {
 	unsigned * degrees = new unsigned[4];
@@ -271,7 +273,7 @@ bool Graph::is_universal(unsigned vertex) {
 
 
 /**
-* tests if the given vertex is simplicial with respect to the subgraph induced by the vertices which have not been visited
+* tests if the given vertex is simplicial, i.e., its neighbors form a clique, with respect to the subgraph induced by the vertices which have not been visited
 **/
 bool Graph::is_simplicial(unsigned vertex, bool * visited) {
 	for (unsigned v = 1; v <= order; v++)
@@ -295,7 +297,7 @@ bool Graph::is_simplicial(unsigned vertex, bool * visited) {
 
 /**
 * returns a pair of simplicial vertices of the subgraph induced by the vertices which have not been visited
-* expects the subgraph to have at least two simplicial vertices (this is the case if the graph is chordal for example)
+* expects the subgraph to have at least two simplicial vertices (this is the case, e.g., if the graph is chordal)
 **/
 std::pair<unsigned, unsigned> Graph::get_simplicial_pair(bool * visited) {
 	unsigned first = 0;
@@ -321,7 +323,7 @@ std::pair<unsigned, unsigned> Graph::get_simplicial_pair(bool * visited) {
 
 
 /**
- * generates a lexicographic ordering on the vertices of the graph via lexicographic-breadth-first-search
+ * generates a lexicographic ordering on the vertices of the graph via lexicographic-breadth-first-search using partition refinement
 **/
 std::pair<unsigned *, unsigned *> Graph::gen_lexicographic_ordering() {
 	if (order == 0)
@@ -444,7 +446,7 @@ bool Graph::peo_switch(unsigned * peo, unsigned * peo_indices, unsigned * h, uns
 
 /**
 * recursively iterates through all perfect elimination orderings of the graph (twice) by swapping consecutive elements
-* returns true as soon as an ordering was found for which the graph is closed with respect to the induced labeling
+* returns true as soon as an ordering is found for which the graph is closed with respect to the induced labeling
 **/
 bool Graph::test_pe_orderings(unsigned * peo, unsigned * peo_indices, unsigned * h, unsigned * a, unsigned * b, unsigned i) {
 	if (i == 0)
@@ -578,7 +580,7 @@ void Graph::gen_initial_peo(unsigned * peo, unsigned * peo_indices, unsigned * h
 
 //########## public member functions ##########
 /**
- * constructor
+ * constructor for given graph order and adjacency matrix
 **/
 Graph::Graph(unsigned order, unsigned * adj) {
 	if (order > 62)
@@ -601,6 +603,7 @@ Graph::Graph(unsigned order, unsigned * adj) {
 
 /**
  * expects a list of edges of the following form "{{1,2},{1,4},{2,3},{3,5}}"
+ * changes 'this' to be the graph specified by order and edges
 **/
 void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 	if (order > 62)
@@ -680,6 +683,7 @@ void Graph::read_graph_from_line(unsigned order, std::string * edges) {
 
 /**
  * expects a vector of edges
+ * changes 'this' to be the graph specified by order and edges
 **/
 void Graph::read_graph_from_vector(unsigned order, std::vector<std::pair<unsigned, unsigned>> * edges) {
 	if (order > 62)
@@ -763,6 +767,11 @@ std::string Graph::convert_to_string() {
 
 
 
+/**
+* expects labeling to be a list of indices specifying the desired order of vertices
+* converts the adjacency matrix into a string containing all edges in the form of "{{1,2},{1,4},{2,3},{3,5}}"
+* the edges are given with respect to the given labeling
+**/
 std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling) {
 	std::string edges = "{";
 
@@ -792,7 +801,7 @@ std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling) {
 
 
 /**
- * converts the graph to a string using the g6 format
+ * converts the graph to a string using the Graph6 format
 **/
 std::string Graph::convert_to_g6_format() {
 	std::string g6_string = "";
@@ -837,7 +846,8 @@ bool Graph::adjacent(unsigned v, unsigned w) {
 
 
 /**
- * expects a file where graphs are parsed in g6-format as generated by nauty
+ * expects a file where graphs are parsed in one line in Graph6-format (e.g., a standard file generated by nauty)
+ * changes 'this' to be the graph specified by read line
 **/
 bool Graph::read_next_g6_format(std::ifstream * file) {
 	std::string g6_string;
@@ -893,7 +903,8 @@ bool Graph::read_next_g6_format(std::ifstream * file) {
 
 
 /**
-* expects a file where graphs are parsed in a line with vertex number and edge-list, e.g., 3 {1,2},{2,3}
+* expects a file where graphs are parsed in one line with vertex number and edge-list, e.g., 3 {1,2},{2,3}
+* changes 'this' to be the graph specified by read line
 **/
 bool Graph::read_next_list_format(std::ifstream * file) {
 	std::string line = "";
@@ -1021,7 +1032,8 @@ std::vector<unsigned> Graph::get_clique_numbers() {
 
 
 /**
- * returns the detour number, i.e., the length of the longest induce path
+ * returns the detour number, i.e., the length of the longest induce path by iterating over all vertex subsets
+ * this is done by taking advantage of the binary representation of integers (e.g., for order n=5: 6 = 1010 = {2,4})
 **/
 std::vector<unsigned> Graph::get_detour_number() {
 	unsigned pow_set_size = nth_power(2, order);
@@ -1069,12 +1081,14 @@ std::vector<unsigned> Graph::get_extreme_degrees() {
 **/
 std::vector<unsigned> Graph::get_independence_numbers() {
 	Graph complement = get_complement();
+	if (order == 3 && adjacent(1, 3) && adjacent(2, 3) && !adjacent(1, 2))
+		std::cout << "\n" << complement.get_order() << " " << complement.convert_to_string() << "\n" << complement.get_clique_numbers().at(0) << " " << complement.get_clique_numbers().at(1) << "\n";
 	return complement.get_clique_numbers();
 }
 
 
 /**
- * returns the girth of the graph, i.e., the minimum length of a cycle (0 if there are none)
+ * returns the girth of the graph, i.e., the minimum length of a cycle (0 if there are none), via modified breadth-first-search
 **/
 std::vector<unsigned> Graph::get_girth() {
 	unsigned girth = order + 1;
@@ -1148,7 +1162,7 @@ std::vector<unsigned> Graph::get_girth() {
 
 
 /**
-* tests if the graph is closed with respect to given (perfect elimination) ordering, i.e.
+* tests if the graph is closed with respect to the labeling induced by given (perfect elimination) ordering, i.e.
 * {a,b},{i,j} in E(G) with a < b, i < j  =>  {a,i} in E(G) if b=j and {b,j} in E(G) if a=i
 **/
 bool Graph::is_closed_wrt_labeling(unsigned * peo, unsigned * peo_indices) {

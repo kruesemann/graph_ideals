@@ -6,7 +6,7 @@
 
 //########## IO function ##########
 /**
- * gets the user input and returns the interaction key based on the keyword of the input
+ * gets the user input and calls the appropriate parser based on the keyword of the input
 **/
 int io_interface(DatabaseInterface * dbi) {
 	std::string input;
@@ -35,14 +35,14 @@ int io_interface(DatabaseInterface * dbi) {
 		save_parse(dbi, &input);
 	else if (keyword == "import")
 		import_parse(dbi, &input);
-	else if (keyword == "type")
-		type_parse(dbi, &input);
+	else if (keyword == "classify")
+		classify_parse(dbi, &input);
 	else if (keyword == "results")
 		results_parse(dbi, &input);
 	else if (keyword == "scripts")
 		script_parse(dbi, &input);
-	else if (keyword == "numbers")
-		values_parse(dbi, &input);
+	else if (keyword == "compute")
+		compute_parse(dbi, &input);
 	else
 		dbi->execute_SQL_statement(&(keyword + " " + input));
 
@@ -53,7 +53,8 @@ int io_interface(DatabaseInterface * dbi) {
 //########## main function ##########
 /**
  * opens the given database (if none is specified it opens 'Graphs.db'),
- * gets the interaction key via io_interface and takes action based on the key
+ * creates scripts and graphs table, if they do not exist
+ * prints help text and calls io_interface
 **/
 int main(int argc, char * argv[]) {
 	DatabaseInterface dbi;

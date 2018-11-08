@@ -25,6 +25,7 @@ unsigned ignore_negative(int x) {
  *     1: . 3 2
  *
  *
+ * changes 'this' to be the next table in the file
 **/
 bool BettiTable::read_next_table(std::ifstream* file) {
 	std::string line = "";
@@ -90,6 +91,7 @@ bool BettiTable::read_next_table(std::ifstream* file) {
 
 /**
  * expects a string where the Betti table is parsed like this: "{1,0,0},{0,2,0},{0,0,1}"
+ * changes 'this' to be the Betti table specified by given line
 **/
 void BettiTable::read_from_line(std::string * line) {
 	columns = 0;
@@ -228,7 +230,7 @@ std::vector<unsigned> BettiTable::get_extremal_betti_numbers() {
 
 
 /**
-* returns a string-list of the Betti numbers where every other Betti number to the right and down from these is zero
+* returns a string list of the Betti numbers where every other Betti number to the right and down from these is zero
 **/
 std::string BettiTable::get_extremal_betti_numbers_as_string() {
 	std::vector<unsigned> extremal_betti_numbers = get_extremal_betti_numbers();
@@ -277,7 +279,7 @@ std::vector<unsigned> BettiTable::get_column_widths() {
 
 //########## public static functions ##########
 /**
- * writes tables next to each other in a string 
+ * writes tables next to each other in a string
 **/
 std::string BettiTable::convert_tables_to_string(std::vector<BettiTable> * tables, std::vector<std::string> * table_names) {
 	std::vector<std::string> lines;

@@ -73,4 +73,3 @@ public:
 	bool insert_betti_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);
 	bool insert_hpoldeg_data(std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index);
 };
-
