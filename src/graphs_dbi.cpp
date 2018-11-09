@@ -102,7 +102,7 @@ int io_interface(DatabaseInterface * dbi) {
 		compute_parse(dbi, &input);
 	else
 	{
-		std::string statement = "select " + input;
+		std::string statement = keyword + " " + input;
 		dbi->execute_SQL_statement(&statement);
 	}
 
