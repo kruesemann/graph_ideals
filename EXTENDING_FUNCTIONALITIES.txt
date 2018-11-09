@@ -1,0 +1,94 @@
+Guide to adding new properties, values, formats, labelings
+
+
+Contents:
+1. Graph-theoretic values
+2. Graph classes
+3. Algebraic values of associated ideals
+4. Graph import formats
+5. Graph labelings for Macaulay2 script generation
+
+
+=========================================================================================
+1. GRAPH-THEORETIC VALUES
+=========================================================================================
+
+1.1 Write a member function in 'Graph.h' and 'Graph.cpp' with the following signature:
+        std::vector<unsigned> Graph::function()
+    This function should compute the desired values based on graph order, size and adjacencies alone.
+
+1.2 Register the new function in the internal value set lists in 'parser.cpp' by:
+    i)   Increasing NUMBER_VALUESETS by one.
+    ii)  Appending a suitable identifier to VALUESETS that will serve as an argument for 'compute'.
+    iii) Appending a set of column names to COLUMNSETS.
+    iv)  Appending a reference '&Graph::function' to GETTERS.
+
+The parser will automatically iterate over these lists and use the appropriate member functions for the computation process.
+
+=========================================================================================
+2. GRAPH CLASSES
+=========================================================================================
+
+2.1 Write a member function in 'Graph.h' and 'Graph.cpp' with the following signature:
+        bool Graph::function()
+    This function should test a property based on graph order, size and adjacencies alone.
+
+2.2 Register the new function in the internal type lists in 'parser.cpp' by:
+    i)   Increasing NUMBER_TYPES by one.
+    ii)  Appending a suitable identifier to TYPES that will serve as an argument for 'classify'.
+    iii) Appending a print name for output messages to PRINT_NAMES.
+    iv)  Appending a reference '&Graph::function' to TESTS.
+    v)   Appending a standard SQL condition or '0' to STD_CONDITIONS (only graphs satisfying that condition will be tested).
+
+The parser will automatically iterate over these lists and use the appropriate member functions for the classification process.
+
+=========================================================================================
+3. ALGEBRAIC VALUES OF ASSOCIATED IDEALS
+=========================================================================================
+
+3.1 Write a template Macaulay2 script computing the desired values for graphs G_0,...,G_N-1
+     and printing them to a file 'filename'.
+     
+If the results have a type not yet implemented:
+
+3.2 Write a member function in 'DatabaseInterface.h' and 'DatabaseInterface.cpp' with the following signature:
+        bool (DatabaseInterface::*Result_inserter) (std::string * ideal, std::string * query_condition, std::string * datetime, unsigned index)
+    This function should read the appropriate result files and update the graphs satisfying given 'query_condition'.
+
+3.3 Register the new function in the internal result type lists in 'parser.cpp' by:
+    i)   Increasing NUMBER_RESULTS by one.
+    ii)  Appending a suitable identifier to RESULTS that will serve as an argument for 'scripts'.
+    iii) Appending a reference '&DatabaseInterface::function' to INSERTERS.
+
+The parser will automatically iterate over these lists and use the appropriate member functions for the result inserting process.
+
+=========================================================================================
+4. GRAPH IMPORT FORMATS
+=========================================================================================
+
+4.1 Write a member function in 'Graph.h' and 'Graph.cpp' with the following signature:
+        bool Graph::function(std::ifstream * file)
+    This function should read one graph from the given 'file' or return 'false' if there is none.
+
+4.2 Register the new function in the internal format lists in 'parser.cpp' by:
+    i)   Increasing NUMBER_FORMATS by one.
+    ii)  Appending a suitable identifier to FORMATS that will serve as an argument for 'import'.
+    iii) Appending a reference '&Graph::function' to READERS.
+
+The parser will automatically iterate over these lists and use the appropriate member functions for the import process.
+
+=========================================================================================
+5. GRAPH LABELINGS FOR MACAULAY2 SCRIPT GENERATION
+=========================================================================================
+
+5.1 Write a member function in 'Graph.h' and 'Graph.cpp' with the following signature:
+        unsigned * Graph::function()
+    This function should return an array specifying the desired vertex order based on graph order, size and adjacencies alone.
+    For example, '40213' to label the vertices as '{5,1,3,2,4}'.
+
+5.2 Register the new function in the internal labeling lists in 'parser.cpp' by:
+    i)   Increasing NUMBER_LABELINGS by one.
+    ii)  Appending a suitable identifier to LABELINGS that will serve as an argument for 'scripts'.
+    iii) Appending a reference '&Graph::function' to GENERATORS.
+
+The parser will automatically iterate over these lists and use the appropriate member functions for the script generation process.
