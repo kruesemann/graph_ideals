@@ -46,6 +46,14 @@ public:
 
 	Graph(unsigned order, unsigned * adj);
 
+	Graph(const Graph &g) {
+		order = g.order;
+		size = g.size;
+		adjacencies = new unsigned[order*order];
+		for (unsigned i = 0; i < order * order; i++)
+			adjacencies[i] = g.adjacencies[i];
+	}
+
 	void read_graph_from_line(unsigned order, std::string * edges);
 	void read_graph_from_vector(unsigned order, std::vector<std::pair<unsigned, unsigned>> * edges);
 

@@ -768,7 +768,10 @@ void results_parse(DatabaseInterface * dbi, std::string * input) {
 
 	PROGRESS(1, "adding result data");
 	if ((dbi->*INSERTERS[result])(&name, &query_condition, &datetime, result))
-		dbi->execute_SQL_statement(&("DELETE FROM Scripts WHERE scriptID == " + std::to_string(scriptID)));
+	{
+		std::string statement = "DELETE FROM Scripts WHERE scriptID == " + std::to_string(scriptID);
+		dbi->execute_SQL_statement(&statement);
+	}
 }
 
 

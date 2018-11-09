@@ -1009,7 +1009,7 @@ Graph Graph::get_complement() {
 			adj[j] = 1 - adjacencies[j];
 		}
 	}
-
+	
 	return Graph(order, adj);
 }
 
@@ -1027,7 +1027,7 @@ std::vector<unsigned> Graph::get_clique_numbers() {
 
 	unsigned clique_number = bron_kerbosch_pivot(&max_cliques, 0, &include_all, &include_some, &include_none);
 
-	return { clique_number, max_cliques.size() };
+	return { clique_number, (unsigned)max_cliques.size() };
 }
 
 
@@ -1081,8 +1081,6 @@ std::vector<unsigned> Graph::get_extreme_degrees() {
 **/
 std::vector<unsigned> Graph::get_independence_numbers() {
 	Graph complement = get_complement();
-	if (order == 3 && adjacent(1, 3) && adjacent(2, 3) && !adjacent(1, 2))
-		std::cout << "\n" << complement.get_order() << " " << complement.convert_to_string() << "\n" << complement.get_clique_numbers().at(0) << " " << complement.get_clique_numbers().at(1) << "\n";
 	return complement.get_clique_numbers();
 }
 

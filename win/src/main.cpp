@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "stdafx.h"
 #include "parser.h"
 
@@ -26,7 +24,10 @@ int io_interface(DatabaseInterface * dbi) {
 	if (keyword == "SELECT"
 		|| keyword == "Select"
 		|| keyword == "select")
-		dbi->execute_SQL_query(&(keyword + " " + input));
+	{
+		std::string query = "select " + input;
+		dbi->execute_SQL_query(&query);
+	}
 	else if (keyword == "help")
 		help_parse(dbi, &input);
 	else if (keyword == "show")
@@ -44,7 +45,10 @@ int io_interface(DatabaseInterface * dbi) {
 	else if (keyword == "compute")
 		compute_parse(dbi, &input);
 	else
-		dbi->execute_SQL_statement(&(keyword + " " + input));
+	{
+		std::string statement = "select " + input;
+		dbi->execute_SQL_statement(&statement);
+	}
 
 	return 1;
 }
@@ -72,6 +76,7 @@ int main(int argc, char * argv[]) {
 	dbi.create_scripts_table();
 	dbi.create_graphs_table();
 
-	help_parse(&dbi, &std::string(""));
+	std::string temp = "";
+	help_parse(&dbi, &temp);
 	while (io_interface(&dbi));
 }

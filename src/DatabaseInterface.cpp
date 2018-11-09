@@ -24,15 +24,15 @@ inline unsigned str_to_unsigned(std::string * str) {
 /**
 * returns current date and time as a string
 **/
-inline std::string datetime() {
+inline std::string cdatetime() {
 	time_t rawtime;
-	struct tm timeinfo;
+	struct tm * timeinfo;
 	char buffer[80];
 
 	time(&rawtime);
-	localtime_s(&timeinfo, &rawtime);
+	timeinfo = localtime(&rawtime);
 
-	strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", &timeinfo);
+	strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", timeinfo);
 	std::string str(buffer);
 
 	return str;
@@ -43,8 +43,8 @@ inline std::string datetime() {
  * returns the appropriate coordinates for a vertex to print the graph of given order on a circle
 **/
 std::pair<int, int> get_coordinate(unsigned vertex, unsigned order) {
-	int first = (int)100 * cos(2 * (vertex - 1) * PI / order);
-	int second = (int)100 * sin(2 * (vertex - 1) * PI / order);
+	int first = (int)(100 * cos(2 * (vertex - 1) * PI / order));
+	int second = (int)(100 * sin(2 * (vertex - 1) * PI / order));
 
 	return std::pair<int, int>(first, second);
 }
@@ -449,7 +449,7 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	buffer << templ.rdbuf();
 	templ.close();
 
-	std::string datetime(datetime());
+	std::string datetime(cdatetime());
 
 	unsigned k;
 	unsigned i;
@@ -528,8 +528,9 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	}
 
 	values += "\"" + datetime + "\"," + std::to_string(index) + ")";
+	columns += values;
 
-	execute_SQL_statement(&(columns + values));
+	execute_SQL_statement(&columns);
 }
 
 
