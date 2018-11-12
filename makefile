@@ -1,11 +1,11 @@
-TARGET   = graphs_dbi
+TARGET   = Tinait
 CPP      = g++
 CPPFLAGS = -std=c++0x -Wall
 LINKER   = g++
 LFLAGS   = -Wall -l sqlite3 -l readline
 
-OBJ     := obj/graphs_dbi.o obj/DatabaseInterface.o obj/BettiTable.o obj/Graph.o obj/parser.o
-SRC	:= src/graphs_dbi.cpp src/DatabaseInterface.cpp src/BettiTable.cpp src/Graph.cpp src/parser.cpp
+OBJ     := obj/Tinait.o obj/DatabaseInterface.o obj/BettiTable.o obj/Graph.o obj/parser.o
+SRC	:= src/Tinait.cpp src/DatabaseInterface.cpp src/BettiTable.cpp src/Graph.cpp src/parser.cpp
 rm      = rm -f
 
 

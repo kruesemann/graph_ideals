@@ -87,7 +87,7 @@ public:
 	unsigned get_size();
 
 	std::string convert_to_string();
-	std::string convert_to_string_wrt_labeling(unsigned * labeling);
+	std::string convert_to_string_wrt_ordering(unsigned * ordering);
 	std::string convert_to_g6_format();
 
 	bool adjacent(unsigned v, unsigned w);
@@ -113,5 +113,5 @@ public:
 	bool is_closed();
 	bool is_cone();
 
-	unsigned * gen_closed_labeling();
+	unsigned * gen_closed_ordering();
 };

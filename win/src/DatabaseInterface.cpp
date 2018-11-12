@@ -409,11 +409,11 @@ void DatabaseInterface::save_view_g6(std::ofstream * file) {
 
 
 /**
-* generates Macaulay2 scripts of all graphs satisfying query_condition, based on template filename, each labeled wrt to the given labeling labeling_name
+* generates Macaulay2 scripts of all graphs satisfying query_condition, based on template filename, each labeled wrt to the labeling induced by ordering ordering_name
 * for this, the function queries the database and iterates over all results printing the graphs into files based on the template
 * function also registers the generated scripts in the scripts table so that results may be imported later
 **/
-void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name, unsigned index) {
+void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Graph::*gen_ordering)(), unsigned batch_size, const char * query_condition, const char * filename, const char * ordering_name, unsigned index) {
 	sqlite3_stmt * qry;
 
 	if (query_condition)
@@ -464,11 +464,11 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 			edges = (char *)sqlite3_column_text(qry, 1) ? (char *)sqlite3_column_text(qry, 1) : "ERROR";
 			Graph g(sqlite3_column_int(qry, 0), &edges);
 
-			if (gen_labeling)
+			if (gen_ordering)
 			{
-				unsigned * labeling = (g.*gen_labeling)();
-				script += g.convert_to_string_wrt_labeling(labeling) + ",\n";
-				delete[] labeling;
+				unsigned * ordering = (g.*gen_ordering)();
+				script += g.convert_to_string_wrt_ordering(ordering) + ",\n";
+				delete[] ordering;
 			}
 			else
 				script += g.convert_to_string() + ",\n";
@@ -512,10 +512,10 @@ void DatabaseInterface::generate_m2_scripts(std::string * name, unsigned * (Grap
 	std::string columns = "INSERT INTO Scripts (name,";
 	std::string values = "datetime,resultType) VALUES (\"" + *name + "\",";
 
-	if (labeling_name)
+	if (ordering_name)
 	{
-		columns += "labeling,";
-		values += "\"" + std::string(labeling_name) + "\",";
+		columns += "ordering,";
+		values += "\"" + std::string(ordering_name) + "\",";
 	}
 
 	columns += "batchsize,";
@@ -692,7 +692,7 @@ bool DatabaseInterface::create_scripts_table() {
 	std::string statement = "CREATE TABLE Scripts(" \
 		"scriptID INTEGER PRIMARY KEY," \
 		"name TEXT NOT NULL," \
-		"labeling TEXT," \
+		"ordering TEXT," \
 		"batchsize INT NOT NULL," \
 		"condition TEXT," \
 		"datetime TEXT NOT NULL," \

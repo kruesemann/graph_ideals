@@ -54,7 +54,7 @@ public:
 	void save_view_visualisation(std::ofstream * file);
 	void save_view_g6(std::ofstream * file);
 
-	void generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_labeling)(), unsigned batch_size, const char * query_condition, const char * filename, const char * labeling_name, unsigned index);
+	void generate_m2_scripts(std::string * idealname, unsigned * (Graph::*gen_ordering)(), unsigned batch_size, const char * query_condition, const char * filename, const char * ordering_name, unsigned index);
 
 	void show_scripts();
 

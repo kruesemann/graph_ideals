@@ -768,23 +768,23 @@ std::string Graph::convert_to_string() {
 
 
 /**
-* expects labeling to be a list of indices specifying the desired order of vertices
-* converts the adjacency matrix into a string containing all edges in the form of "{{1,2},{1,4},{2,3},{3,5}}"
-* the edges are given with respect to the given labeling
+* expects ordering to be a list specifying the desired order of vertices
+* converts the adjacency matrix into a string containing all edges in the form of "{{1,2},{2,3},{3,4},{5,6}}"
+* the edges are given with respect to the induced labeling and ordering 1<2<...<n
 **/
-std::string Graph::convert_to_string_wrt_labeling(unsigned * labeling) {
+std::string Graph::convert_to_string_wrt_ordering(unsigned * ordering) {
 	std::string edges = "{";
 
-	for (unsigned first_vertex = 1; first_vertex <= order; first_vertex++)
+	for (unsigned i = 0; i < order; i++)
 	{
-		for (unsigned second_vertex = first_vertex + 1; second_vertex <= order; second_vertex++)
+		for (unsigned j = i + 1; j < order; j++)
 		{
-			if (adjacent(first_vertex, second_vertex))
+			if (adjacent(ordering[i], ordering[j]))
 			{
 				edges.push_back('{');
-				edges += std::to_string(labeling[first_vertex - 1] + 1);
+				edges += std::to_string(i + 1);
 				edges.push_back(',');
-				edges += std::to_string(labeling[second_vertex - 1] + 1);
+				edges += std::to_string(j + 1);
 				edges.push_back('}');
 				edges.push_back(',');
 			}
@@ -1394,28 +1394,28 @@ bool Graph::is_cone() {
 
 /**
  * expects the graph to be closed
- * returns a labeling with respect to which the graph is closed
+ * returns an ordering inducing a labeling with respect to which the graph is closed
 **/
-unsigned * Graph::gen_closed_labeling() {
+unsigned * Graph::gen_closed_ordering() {
 	if (order < 1)
 		return 0;
 
-	unsigned * peo_indices = new unsigned[order];
+	unsigned * peo = new unsigned[order];
 
 	if (order == 1)
 	{
-		peo_indices[0] = 0;
-		return peo_indices;
+		peo[0] = 1;
+		return peo;
 	}
 
 	if (order == 2)
 	{
-		peo_indices[0] = 0;
-		peo_indices[1] = 1;
-		return peo_indices;
+		peo[0] = 1;
+		peo[1] = 2;
+		return peo;
 	}
 
-	unsigned * peo = new unsigned[order];
+	unsigned * peo_indices = new unsigned[order];
 	bool closed = false;
 	unsigned * h = new unsigned[order];
 	unsigned * a = new unsigned[order / 2];
@@ -1436,6 +1436,6 @@ unsigned * Graph::gen_closed_labeling() {
 	delete[] h;
 	delete[] a;
 	delete[] b;
-	delete[] peo;
-	return peo_indices;
+	delete[] peo_indices;
+	return peo;
 }
